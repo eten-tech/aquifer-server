@@ -45,7 +45,7 @@ var host = new HostBuilder()
 
         services.AddDbContext<AquiferDbContext>(options => options
             .UseAzureSql(
-                configuration.ConnectionStrings.BiblioNexusDb,
+                configuration.ConnectionStrings.AquiferDb,
                 providerOptions => providerOptions.EnableRetryOnFailure(3))
             .EnableSensitiveDataLogging(isDevelopment)
             .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));

@@ -42,7 +42,7 @@ public sealed class App : IAsyncLifetime
                     .AddMemoryCache()
                     .AddDbContext<AquiferDbContext>(options => options
                         .UseAzureSql(
-                            configuration.ConnectionStrings.BiblioNexusDb,
+                            configuration.ConnectionStrings.AquiferDb,
                             providerOptions => providerOptions.EnableRetryOnFailure(3))
                         .EnableSensitiveDataLogging(isDevelopment)
                         .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking))

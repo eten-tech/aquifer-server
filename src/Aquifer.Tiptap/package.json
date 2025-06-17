@@ -16,7 +16,7 @@
     "license": "ISC",
     "description": "",
     "dependencies": {
-        "aquifer-tiptap": "https://github.com/BiblioNexusStudio/aquifer-tiptap#1.0.11"
+        "aquifer-tiptap": "https://github.com/eten-tech/aquifer-tiptap#1.0.11"
     },
     "devDependencies": {
         "@types/node": "^22.8.4",

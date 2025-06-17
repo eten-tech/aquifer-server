@@ -43,7 +43,7 @@ jobs:
         steps:
             - id: check_deploy
               if: github.event_name != 'workflow_dispatch'
-              uses: BiblioNexusStudio/github-actions/check-if-branch-should-deploy@master
+              uses: eten-tech/github-actions/check-if-branch-should-deploy@master
               with:
                   current_branch: ${{ github.ref_name }}
 
@@ -138,7 +138,7 @@ jobs:
                   linear-api-key: ${{ secrets.LINEAR_API_KEY }}
                   slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
                   service-name: Internal API (East US)
-            - uses: BiblioNexusStudio/github-actions/delete-hotfix-branch@master
+            - uses: eten-tech/github-actions/delete-hotfix-branch@master
               with:
                   current_branch: ${{ github.ref_name }}
                   app_id: ${{ secrets.BIBLIONEXUS_BOT_APP_ID }}

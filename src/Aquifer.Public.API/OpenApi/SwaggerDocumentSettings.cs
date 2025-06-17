@@ -38,7 +38,7 @@ public static class SwaggerDocumentSettings
                 <a href="https://cdn.aquifer.bible/training/webpage-search-with-react-demo.mp4" target="_blank">React Sample Application Demo</a>
 
                 <br><br>
-                Example applications using the Aquifer API can be found in the <a href="https://github.com/BiblioNexusStudio/aquifer-api-samples" target="_blank">samples repository on GitHub</a>.
+                Example applications using the Aquifer API can be found in the <a href="https://github.com/eten-tech/aquifer-api-samples" target="_blank">samples repository on GitHub</a>.
                 """;
                 ds.AddAuth(
                     "ApiKey",
@@ -69,7 +69,7 @@ public static class SwaggerDocumentSettings
                 td["Languages"] = "Endpoints for pulling data specific to languages.";
                 td["Bibles"] = "Endpoints for discovering available Bibles and pulling down Bible text and audio information.";
                 td["Clients"] =
-                    "Endpoints for downloading generated client source code for calling this API. Further details and usage instructions can be found [here](https://github.com/BiblioNexusStudio/aquifer-api-samples/blob/master/documentation/client-generation.md)";
+                    "Endpoints for downloading generated client source code for calling this API. Further details and usage instructions can be found [here](https://github.com/eten-tech/aquifer-api-samples/blob/master/documentation/client-generation.md)";
             };
         });
     }

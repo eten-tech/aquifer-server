@@ -3,7 +3,7 @@
 We use Tiptap as a headless editor and data model for custom information we embed and display in resource contents.
 
 Unfortunately, Tiptap does not have a .net implementation; it is JavaScript only.
-We implemented our own custom rules in JavaScript in the [aquifer-tiptap](https://github.com/BiblioNexusStudio/aquifer-tiptap)
+We implemented our own custom rules in JavaScript in the [aquifer-tiptap](https://github.com/eten-tech/aquifer-tiptap)
 repository which are used client side.
 
 This project exists to import that repository (as a node "package" straight from GitHub) and compile the TypeScript
@@ -15,7 +15,7 @@ Example:
 
 ```
     "dependencies": {
-        "aquifer-tiptap": "https://github.com/BiblioNexusStudio/aquifer-tiptap#1.0.2"
+        "aquifer-tiptap": "https://github.com/eten-tech/aquifer-tiptap#1.0.2"
     },
 ```
 

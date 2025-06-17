@@ -41,7 +41,7 @@ jobs:
         steps:
             - id: check_deploy
               if: github.event_name != 'workflow_dispatch'
-              uses: BiblioNexusStudio/github-actions/check-if-branch-should-deploy@master
+              uses: eten-tech/github-actions/check-if-branch-should-deploy@master
               with:
                   current_branch: ${{ github.ref_name }}
 
@@ -109,7 +109,7 @@ jobs:
         steps:
             - name: Notify Slack deploy is starting
               id: slack-notify
-              uses: BiblioNexusStudio/github-action-slack-notify-build@main
+              uses: eten-tech/github-action-slack-notify-build@main
               with:
                   channel_id: C05UPTGQGP9
                   status: RUNNING
@@ -143,7 +143,7 @@ jobs:
                   package: build
             - name: Notify Slack deploy status
               if: ${{ !cancelled()  }}
-              uses: BiblioNexusStudio/github-action-slack-notify-build@main
+              uses: eten-tech/github-action-slack-notify-build@main
               with:
                   channel_id: C05UPTGQGP9
                   status: ${{ job.status == 'failure' && 'FAILURE' || 'SUCCESS' }}
@@ -169,7 +169,7 @@ jobs:
         steps:
             - name: Notify Slack deploy is starting
               id: slack-notify
-              uses: BiblioNexusStudio/github-action-slack-notify-build@main
+              uses: eten-tech/github-action-slack-notify-build@main
               with:
                   channel_id: C05UPTGQGP9
                   status: RUNNING
@@ -203,7 +203,7 @@ jobs:
                   package: build
             - name: Notify Slack deploy status
               if: ${{ !cancelled()  }}
-              uses: BiblioNexusStudio/github-action-slack-notify-build@main
+              uses: eten-tech/github-action-slack-notify-build@main
               with:
                   channel_id: C05UPTGQGP9
                   status: ${{ job.status == 'failure' && 'FAILURE' || 'SUCCESS' }}

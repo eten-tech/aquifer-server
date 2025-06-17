@@ -24,7 +24,7 @@ public class ConfigurationOptions
 
 public class ConnectionStringOptions
 {
-    public required string BiblioNexusDb { get; init; }
+    public required string AquiferDb { get; init; }
 }
 
 public class EmailOptions

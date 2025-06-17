@@ -10,5 +10,5 @@ public class ConfigurationOptions
 
 public class ConnectionStringOptions
 {
-    public required string BiblioNexusReadOnlyDb { get; init; }
+    public required string AquiferReadOnlyDb { get; init; }
 }

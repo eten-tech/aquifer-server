@@ -41,8 +41,8 @@ jobs:
                       --no-build \
                       --logger "trx;LogFileName=test-results.trx" \
                       -e ASPNETCORE_ENVIRONMENT="${{ vars.ASPNETCORE_ENVIRONMENT }}" \
-                      -e ConnectionStrings__BiblioNexusDb="${{ secrets.BIBLIONEXUS_DB_CONNECTION_STRING }}" \
-                      -e ConnectionStrings__BiblioNexusReadOnlyDb="${{ secrets.BIBLIONEXUS_DB_CONNECTION_STRING }};ApplicationIntent=ReadOnly;" \
+                      -e ConnectionStrings__AquiferDb="${{ secrets.BIBLIONEXUS_DB_CONNECTION_STRING }}" \
+                      -e ConnectionStrings__AquiferReadOnlyDb="${{ secrets.BIBLIONEXUS_DB_CONNECTION_STRING }};ApplicationIntent=ReadOnly;" \
                       -e KeyVaultUri="${{ secrets.KEY_VAULT_URI }}" \
                       -e AzureStorageAccount__BlobEndpoint="${{ vars.AZURE_STORAGE_ACCOUNT_BLOB_ENDPOINT }}" \
                       -e AzureStorageAccount__QueueEndpoint="${{ vars.AZURE_STORAGE_ACCOUNT_QUEUE_ENDPOINT }}" \

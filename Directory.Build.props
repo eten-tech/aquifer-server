@@ -8,11 +8,11 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <WarningsNotAsErrors>MSB3245;NU1608;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <GitHubOrganization>BiblioNexusStudio</GitHubOrganization>
+        <GitHubOrganization>eten-tech</GitHubOrganization>
         <RepositoryName>aquifer-server</RepositoryName>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryUrl>https://github.com/$(GitHubOrganization)/$(RepositoryName).git</RepositoryUrl>
-        <Authors>BiblioNexus</Authors>
+        <Authors>eten-tech</Authors>
         <Copyright>Copyright $(Authors)</Copyright>
         <IsPackable>false</IsPackable>
         <IsTestProject>false</IsTestProject>

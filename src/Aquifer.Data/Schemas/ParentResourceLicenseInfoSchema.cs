@@ -1,10 +1,12 @@
-﻿namespace Aquifer.Public.API.Endpoints.Bibles;
+namespace Aquifer.Data.Schemas;
 
-public sealed class BibleLicenseInfo
+public sealed class ParentResourceLicenseInfoSchema
 {
     public required string Title { get; init; }
     public required LicenseCopyright Copyright { get; init; }
     public required IReadOnlyList<LicenseDetails> Licenses { get; init; }
+    public required bool ShowAdaptationNoticeForEnglish { get; init; }
+    public required bool ShowAdaptationNoticeForNonEnglish { get; init; }
 
     public sealed class LicenseCopyright
     {
@@ -15,9 +17,7 @@ public sealed class BibleLicenseInfo
     public sealed class LicenseCopyrightHolder
     {
         public required string Name { get; init; }
-
-        // missing for some Bibles
-        public string? Url { get; set; }
+        public required string Url { get; init; }
     }
 
     public sealed class LicenseDetails

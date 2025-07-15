@@ -70,9 +70,21 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<Request, Re
                 .ToListAsync(ct);
         }
 
-        var response = bookData is null
-            ? null
-            : new Response
+        if (bookData is null)
+        {
+            await SendNotFoundAsync(ct);
+        }
+        else
+        {
+            // The JSON in the DB might have duplicate chapter numbers in the audio data.
+            // If we clean that up then this can use a standard ToDictionary() call.
+            var audioUrlsByChapter = !request.ShouldReturnAudioData
+                ? null
+                : DeserializeAudioUrls(bookData.AudioUrls)
+                    ?.Chapters
+                    ?.ToDictionaryIgnoringDuplicates(c => int.Parse(c.Number));
+
+            var response = new Response
             {
                 BibleId = bookData.BibleId,
                 BibleName = bookData.BibleName,
@@ -82,22 +94,28 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<Request, Re
                 Chapters = bookData.Chapters!
                     .Select(ch =>
                     {
-                        var chapterAudio = !request.ShouldReturnAudioData
-                            ? null
-                            : DeserializeAudioUrls(bookData.AudioUrls)?.Chapters?.FirstOrDefault(c => c.Number == ch.Number.ToString());
+                        var chapterAudio = audioUrlsByChapter?.GetValueOrDefault(ch.Number);
 
                         return new ResponseChapter
                         {
                             Number = ch.Number,
                             Audio = MapToResponseChapterAudio(chapterAudio),
                             Verses = ch.Verses
-                                .Select(v => new ResponseChapterVerse
+                                .Select(v =>
                                 {
-                                    Number = v.Number,
-                                    AudioTimestamp =
-                                        MapToResponseAudioTimestamp(
-                                            chapterAudio?.AudioTimestamps?.FirstOrDefault(at => at.VerseNumber == v.Number.ToString())),
-                                    Text = v.Text,
+                                    // The JSON in the DB sometimes has duplicate verse numbers in the audio timestamps.
+                                    // If we clean that up then this can use a standard ToDictionary() call.
+                                    var audioTimestampByVerseNumber = chapterAudio
+                                        ?.AudioTimestamps
+                                        ?.ToDictionaryIgnoringDuplicates(at => int.Parse(at.VerseNumber));
+
+                                    return new ResponseChapterVerse
+                                    {
+                                        Number = v.Number,
+                                        AudioTimestamp =
+                                            MapToResponseAudioTimestamp(audioTimestampByVerseNumber?.GetValueOrDefault(v.Number)),
+                                        Text = v.Text,
+                                    };
                                 })
                                 .ToList(),
                         };
@@ -105,7 +123,8 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<Request, Re
                     .ToList(),
             };
 
-        await (response is null ? SendNotFoundAsync(ct) : SendOkAsync(response, ct));
+            await SendOkAsync(response, ct);
+        }
     }
 
     private static BibleBookContentEntity.AudioUrlsData? DeserializeAudioUrls(string? json)

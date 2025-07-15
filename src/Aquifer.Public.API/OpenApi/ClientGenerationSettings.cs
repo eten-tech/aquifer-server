@@ -25,7 +25,7 @@ public static class ClientGenerationSettings
             {
                 c.SwaggerDocumentName = swaggerDocumentName;
                 c.Language = GenerationLanguage.CSharp;
-                c.ClientNamespaceName = "BiblioNexus.Aquifer.API.Client";
+                c.ClientNamespaceName = "Aquifer.API.Client";
                 c.ClientClassName = "AquiferClient";
                 c.OutputPath = Path.Combine(c.OutputPath, "cs", Path.GetRandomFileName());
                 c.ExcludePatterns = [$"**/{ClientsRouteName}/**", "**/admin/**"];
@@ -43,7 +43,7 @@ public static class ClientGenerationSettings
             {
                 c.SwaggerDocumentName = swaggerDocumentName;
                 c.Language = GenerationLanguage.Java;
-                c.ClientNamespaceName = "org.biblionexus.aquifer.api.client";
+                c.ClientNamespaceName = "org.aquifer.api.client";
                 c.ClientClassName = "AquiferClient";
                 c.OutputPath = Path.Combine(c.OutputPath, "java", Path.GetRandomFileName());
                 c.ExcludePatterns = [$"**/{ClientsRouteName}/**"];
@@ -61,7 +61,7 @@ public static class ClientGenerationSettings
             {
                 c.SwaggerDocumentName = swaggerDocumentName;
                 c.Language = GenerationLanguage.Python;
-                c.ClientNamespaceName = "biblionexus_aquifer_api_client";
+                c.ClientNamespaceName = "aquifer_api_client";
                 c.ClientClassName = "AquiferClient";
                 c.OutputPath = Path.Combine(c.OutputPath, "py", Path.GetRandomFileName());
                 c.ExcludePatterns = [$"**/{ClientsRouteName}/**"];
@@ -79,7 +79,7 @@ public static class ClientGenerationSettings
             {
                 c.SwaggerDocumentName = swaggerDocumentName;
                 c.Language = GenerationLanguage.TypeScript;
-                c.ClientNamespaceName = "biblionexus-aquifer-api-client";
+                c.ClientNamespaceName = "aquifer-api-client";
                 c.ClientClassName = "AquiferClient";
                 c.OutputPath = Path.Combine(c.OutputPath, "ts", Path.GetRandomFileName());
                 c.ExcludePatterns = [$"**/{ClientsRouteName}/**"];

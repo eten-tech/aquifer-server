@@ -28,7 +28,7 @@ builder.Services
     .AddDbContext<
         AquiferDbReadOnlyContext>(options =>
         options.UseAzureSql(
-                configuration.ConnectionStrings.BiblioNexusReadOnlyDb,
+                configuration.ConnectionStrings.AquiferReadOnlyDb,
                 providerOptions => providerOptions.EnableRetryOnFailure(3))
             .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
             .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking))

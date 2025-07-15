@@ -41,7 +41,7 @@ builder.Services
     .AddSingleton<ITelemetryInitializer, RequestTelemetryInitializer>()
     .AddDbContext<AquiferDbContext>(options => options
         .UseAzureSql(
-            configuration.ConnectionStrings.BiblioNexusDb,
+            configuration.ConnectionStrings.AquiferDb,
             providerOptions => providerOptions.EnableRetryOnFailure(3))
         .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
         .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking))

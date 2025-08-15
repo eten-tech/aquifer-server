@@ -44,11 +44,9 @@ public class IpAddressLookupHttpClient : IIpAddressLookupHttpClient
             if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable
                 && attempt < maxAttempts)
             {
-                TimeSpan? retryDelay = null;
-
                 // The docs at https://ipapi.co/api/#errors say nothing of requests containing retry value headers.
                 // So, we will default to calculating our own reasonable retry delay.
-                retryDelay ??= CalculateRetryDelay(baseDelay, attempt);
+                var retryDelay = CalculateRetryDelay(baseDelay, attempt);
 
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogWarning(
@@ -59,7 +57,7 @@ public class IpAddressLookupHttpClient : IIpAddressLookupHttpClient
                     retryDelay,
                     errorBody);
 
-                await Task.Delay(retryDelay.Value, ct);
+                await Task.Delay(retryDelay, ct);
                 continue;
             }
             

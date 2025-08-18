@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 
 namespace Aquifer.Public.API.Endpoints.Resources.Get;
 
@@ -33,7 +34,7 @@ public class ResourceTypeMetadata
 
     public string MediaType { get; set; } = null!;
 
-    public required ResourceLicenseInfo LicenseInfo { get; init; }
+    public required ParentResourceLicenseInfoSchema LicenseInfo { get; init; }
 }
 
 public class ResourceContentLanguage

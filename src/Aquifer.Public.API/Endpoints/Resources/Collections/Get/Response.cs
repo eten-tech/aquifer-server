@@ -1,4 +1,5 @@
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 
 namespace Aquifer.Public.API.Endpoints.Resources.Collections.Get;
 
@@ -10,7 +11,7 @@ public sealed class Response
     public required ResourceType ResourceType { get; init; }
     public required string? SliCategory { get; set; }
     public required int? SliLevel { get; set; }
-    public required ResourceLicenseInfo LicenseInfo { get; init; }
+    public required ParentResourceLicenseInfoSchema LicenseInfo { get; init; }
     public required IReadOnlyList<AvailableLanguageResponse> AvailableLanguages { get; init; }
 }
 

@@ -2,6 +2,7 @@
 using Aquifer.Common.Utilities;
 using Aquifer.Data;
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aquifer.Public.API.Endpoints.Resources.Get;
@@ -39,7 +40,7 @@ public static class ResourceHelper
                     Name = x.ResourceContent.Resource.ParentResource.DisplayName,
                     Type = x.ResourceContent.Resource.ParentResource.ResourceType,
                     MediaTypeValue = x.ResourceContent.MediaType,
-                    LicenseInfo = JsonUtilities.DefaultDeserialize<ResourceLicenseInfo>(
+                    LicenseInfo = JsonUtilities.DefaultDeserialize<ParentResourceLicenseInfoSchema>(
                         x.ResourceContent.Resource.ParentResource.LicenseInfo),
                 },
             })

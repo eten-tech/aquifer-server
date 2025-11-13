@@ -26,6 +26,7 @@ public static class ResourceHelper
                 ReferenceId = x.ResourceContent.ResourceId,
                 Name = x.ResourceContent.Resource.EnglishLabel,
                 LocalizedName = x.DisplayName,
+                ReviewLevel = x.ReviewLevel,
                 ContentValue = x.Content,
                 Language = new ResourceContentLanguage
                 {

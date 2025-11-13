@@ -9,6 +9,8 @@ public class Response
     public int ReferenceId { get; set; }
     public string Name { get; set; } = null!;
     public string LocalizedName { get; set; } = null!;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ResourceContentVersionReviewLevel ReviewLevel { get; set; }
 
     /// <summary>
     /// DB Value (Tiptap string).

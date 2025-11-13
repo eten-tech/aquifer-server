@@ -116,6 +116,7 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext, ICachingLanguageServic
                 Id = x.ResourceContent.Id,
                 Name = x.ResourceContent.Resource.EnglishLabel,
                 LocalizedName = x.DisplayName,
+                ReviewLevel = x.ReviewLevel,
                 LanguageCode = languageCodeByIdMap[x.ResourceContent.LanguageId],
                 MediaType = x.ResourceContent.MediaType,
                 Grouping = new ResourceTypeMetadata

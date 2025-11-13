@@ -1,4 +1,5 @@
-﻿using Aquifer.Data.Entities;
+﻿using System.Text.Json.Serialization;
+using Aquifer.Data.Entities;
 
 namespace Aquifer.Public.API.Endpoints.Resources.Search.GetResources;
 
@@ -15,6 +16,8 @@ public class ResponseContent
     public int Id { get; set; }
     public string Name { get; set; } = null!;
     public string LocalizedName { get; set; } = null!;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ResourceContentVersionReviewLevel ReviewLevel { get; set; }
 
     public ResourceContentMediaType MediaType { get; set; }
 

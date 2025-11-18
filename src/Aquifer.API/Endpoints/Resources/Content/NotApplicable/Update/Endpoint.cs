@@ -24,6 +24,9 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
             ResourceContentStatus.TranslationAiDraftComplete,
             ResourceContentStatus.TranslationEditorReview,
             ResourceContentStatus.TranslationCompanyReview,
+            ResourceContentStatus.AquiferizeAiDraftComplete,
+            ResourceContentStatus.AquiferizeEditorReview,
+            ResourceContentStatus.AquiferizeCompanyReview,
         ];
 
         var content = await dbContext.ResourceContentVersions

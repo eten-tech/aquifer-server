@@ -25,7 +25,7 @@ public class Endpoint(IResourceContentSearchService _resourceContentSearchServic
                 IncludeContentMediaTypes = [ResourceContentMediaType.Text],
                 IsPublished = true,
                 IsTranslated = true,
-                IsInProject = false,
+                ExcludeActiveProjects = true,
                 LanguageId = request.LanguageId,
                 ParentResourceId = request.ParentResourceId,
                 ResourceEnglishLabelQuery = request.SearchQuery,

@@ -36,6 +36,7 @@ public sealed class ResourceContentSearchFilter
     public bool? HasAudio { get; set; }
     public bool? HasUnresolvedCommentThreads { get; set; }
     public bool? IsInProject { get; set; }
+    public bool? ExcludeActiveProjects { get; set; }
     public bool? IsTranslated { get; set; }
     public int? TranslationSourceLanguageId { get; set; }
 }
@@ -268,6 +269,13 @@ public sealed class ResourceContentSearchService(AquiferDbContext dbContext) : I
         {
             throw new ArgumentException(
                 $"Filtering on \"{nameof(filter.IsInProject)}\" requires also including the \"{nameof(ResourceContentSearchIncludeFlags.Project)}\" flag.",
+                nameof(filter));
+        }
+
+        if (filter.ExcludeActiveProjects.HasValue && !includeFlags.HasFlag(ResourceContentSearchIncludeFlags.Project))
+        {
+            throw new ArgumentException(
+                $"Filtering on \"{nameof(filter.ExcludeActiveProjects)}\" requires also including the \"{nameof(ResourceContentSearchIncludeFlags.Project)}\" flag",
                 nameof(filter));
         }
 
@@ -539,6 +547,20 @@ public sealed class ResourceContentSearchService(AquiferDbContext dbContext) : I
         if (filter.IsInProject.HasValue)
         {
             whereClausesSql.Add($"prc.ProjectId IS {(filter.IsInProject.Value ? "NOT " : "")}NULL");
+        }
+        
+        if (filter.ExcludeActiveProjects.HasValue)
+        {
+            if (filter.ExcludeActiveProjects.Value)
+            {
+                // Include if NOT in a project OR if the project is completed (has ActualPublishDate)
+                whereClausesSql.Add("(prc.ProjectId IS NULL OR p.ActualPublishDate IS NOT NULL)");
+            }
+            else
+            {
+                // Include if in a project AND the project is not completed (does not have ActualPublishDate)
+                whereClausesSql.Add("(prc.ProjectId IS NOT NULL AND p.ActualPublishDate IS NULL)");
+            }
         }
 
         const string excludeContentMediaTypesParamName = "contentMediaTypeIds";

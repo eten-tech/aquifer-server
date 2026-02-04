@@ -168,6 +168,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
                 rc.MediaType != ResourceContentMediaType.Audio)
             .Include(rc => rc.Versions.OrderByDescending(v => v.Created))
             .Include(rc => rc.ProjectResourceContents)
+                .ThenInclude(prc => prc.Project)
             .ToListAsync(ct);
 
         if (resourceContents.Count < resourceIds.Count)
@@ -182,7 +183,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
                 ThrowError(r => r.ResourceIds, "All resources must be in the New status.");
             }
 
-            if (resourceContent.ProjectResourceContents.Count > 0)
+            if (resourceContent.ProjectResourceContents.Any(prc => prc.Project.ActualPublishDate == null))
             {
                 ThrowError(r => r.ResourceIds, "One or more resources are already in a project.");
             }
@@ -226,6 +227,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
                 rc.LanguageId == languageId)
             .Include(rc => rc.Versions)
             .Include(rc => rc.ProjectResourceContents)
+                .ThenInclude(prc => prc.Project)
             .Include(rc => rc.Language)
             .ToListAsync(ct);
 
@@ -233,7 +235,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
 
         foreach (var resourceContent in languageResourceContents)
         {
-            if (resourceContent.ProjectResourceContents.Count > 0)
+            if (resourceContent.ProjectResourceContents.Any(prc => prc.Project.ActualPublishDate == null))
             {
                 ThrowError(r => r.ResourceIds, "One or more resources are already in a project.");
             }
@@ -298,6 +300,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
                 (rc.Resource.ResourceContents.All(rci => rci.LanguageId != targetLanguageId) && rc.LanguageId == sourceLanguageId))
             .Include(rc => rc.Versions)
             .Include(rc => rc.ProjectResourceContents)
+                .ThenInclude(prc => prc.Project)
             .Include(rc => rc.Language)
             .ToListAsync(ct);
 
@@ -396,7 +399,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
 
         foreach (var existingResourceContent in resourceContentsByIsSource[false])
         {
-            if (existingResourceContent.ProjectResourceContents.Count > 0)
+            if (existingResourceContent.ProjectResourceContents.Any(prc => prc.Project.ActualPublishDate == null))
             {
                 ThrowError(r => r.ResourceIds, "One or more resources are already in a project.");
             }

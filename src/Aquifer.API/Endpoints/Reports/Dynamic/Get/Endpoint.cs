@@ -29,12 +29,14 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService) : En
         if (!ReportRoleHelper.RoleIsAllowedForReport(report.AllowedRoles, user.Role))
         {
             await SendForbiddenAsync(ct);
+            return;
         }
 
         var userPermissions = userService.GetAllJwtPermissions();
         if (!userPermissions.Contains(PermissionName.ReadReports) && user.CompanyId != request.CompanyId && request.CompanyId != 0)
         {
             await SendForbiddenAsync(ct);
+            return;
         }
 
         await using var connection = dbContext.Database.GetDbConnection();

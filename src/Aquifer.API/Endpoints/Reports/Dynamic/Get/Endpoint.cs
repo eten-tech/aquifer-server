@@ -26,15 +26,17 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService) : En
         }
 
         var user = await userService.GetUserFromJwtAsync(ct);
-        if (!ReportRoleHelper.RoleIsAllowedForReport(report.AllowedRoles, user.Role))
-        {
-            await SendForbiddenAsync(ct);
-        }
-
         var userPermissions = userService.GetAllJwtPermissions();
-        if (!userPermissions.Contains(PermissionName.ReadReports) && user.CompanyId != request.CompanyId && request.CompanyId != 0)
+        
+        var hasGlobalReportAccess = userPermissions.Contains(PermissionName.ReadReports);
+        
+        // If only has company-scoped permission, restrict to own company
+        if (!hasGlobalReportAccess &&
+            user.CompanyId != request.CompanyId &&
+            request.CompanyId != 0)
         {
             await SendForbiddenAsync(ct);
+            return;
         }
 
         await using var connection = dbContext.Database.GetDbConnection();

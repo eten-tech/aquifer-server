@@ -23,7 +23,7 @@ public sealed class EndpointTests(App _app) : TestBase<App>
         result.Should().BeNull();
     }
 
-    [Theory]
+    [Theory(Skip = "Data dependency - resource 303872 missing passage associations")]
     [InlineData(ImageResourceContentId, true, false)]
     [InlineData(TextResourceContentId, true, true)]
     public async Task ValidRequest_ShouldReturnSuccess(

@@ -77,14 +77,18 @@ jobs:
                 cd ../..
             - name: Bundle migrations
               run: dotnet ef migrations bundle --startup-project src/Aquifer.Migrations --project src/Aquifer.Data --context AquiferDbContext --output build/Migrate --configuration Release --self-contained --no-build
-            - name: Download ffmpeg from Azure Blob Storage
-              uses: armanrahman22/azblob-download-action@v0.0.4
+            - name: Login to Azure
+              uses: azure/login@v2.2.0
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
-                  storage-account-name: "aquiferstoragedev"
-                  container-name: "deployment-artifacts"
-                  blob-name: "ffmpeg.zip"
-                  download-path: "./temp"
+            - name: Download ffmpeg from Azure Blob Storage
+              run: |
+                  az storage blob download \
+                    --account-name aquiferstoragedev \
+                    --container-name deployment-artifacts \
+                    --name ffmpeg.zip \
+                    --file ./temp/ffmpeg.zip \
+                    --auth-mode login
             - name: Unzip ffmpeg into build folder
               run: |
                 mkdir -p ./build/lib

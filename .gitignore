@@ -403,8 +403,8 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 *.DotSettings.user
-appsettings.Development.json
-appsettings.Production.json
+appsettings.Development*
+appsettings.Production*
 .idea/
 
 # Local queue development

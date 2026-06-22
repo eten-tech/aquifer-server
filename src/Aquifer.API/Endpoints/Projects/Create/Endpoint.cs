@@ -401,11 +401,11 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService, IRes
                 ThrowError(r => r.ResourceIds, "One or more resources are already in a project.");
             }
 
-            if (existingResourceContent.Status != ResourceContentStatus.TranslationAwaitingAiDraft)
+            if (existingResourceContent.Status is not (ResourceContentStatus.TranslationAwaitingAiDraft or ResourceContentStatus.TranslationAiDraftComplete))
             {
                 ThrowError(
                     r => r.ResourceIds,
-                    "One or more resources exist but are not in TranslationAwaitingAiDraft status.");
+                    "One or more resources exist but are not in TranslationAwaitingAiDraft or TranslationAiDraftComplete status.");
             }
 
             var existingVersion = existingResourceContent.Versions.FirstOrDefault(v => v.IsDraft);

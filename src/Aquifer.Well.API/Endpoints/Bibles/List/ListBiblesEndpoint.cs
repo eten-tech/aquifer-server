@@ -1,17 +1,19 @@
 ﻿using Aquifer.Common.Utilities;
 using Aquifer.Data;
 using Aquifer.Data.Schemas;
+using Aquifer.Well.API.Helpers;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 
-namespace Aquifer.Public.API.Endpoints.Bibles.List;
+namespace Aquifer.Well.API.Endpoints.Bibles.List;
 
-public class Endpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<Request, IReadOnlyList<Response>>
+public class ListBiblesEndpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<ListBiblesRequest, IReadOnlyList<ListBiblesResponse>>
 {
     public override void Configure()
     {
         Get("/bibles");
-        Description(d => d.WithTags("Bibles").ProducesProblemFE());
+        Options(EndpointHelpers.ServerCacheInSeconds(EndpointHelpers.OneHourInSeconds));
+        Description(d => d.ProducesProblemFE());
         Summary(s =>
         {
             s.Summary = "Get a list of Bibles.";
@@ -20,17 +22,13 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<Request, IR
         });
     }
 
-    public override async Task HandleAsync(Request request, CancellationToken ct)
+    public override async Task HandleAsync(ListBiblesRequest req, CancellationToken ct)
     {
         var bibles = await dbContext.Bibles
             .Where(b => b.Enabled &&
-                !b.RestrictedLicense &&
-                (!request.LanguageId.HasValue || b.LanguageId == request.LanguageId) &&
-                (request.LanguageCode == null || b.Language.ISO6393Code == request.LanguageCode) &&
-                (!request.IsLanguageDefault.HasValue || b.LanguageDefault == request.IsLanguageDefault) &&
-                (!request.HasGreekAlignment.HasValue || b.GreekAlignment == request.HasGreekAlignment) &&
-                (!request.HasAudio.HasValue || b.BibleBookContents.Any(bbc => bbc.AudioUrls != null) == request.HasAudio))
-            .Select(bible => new Response
+                (!req.LanguageId.HasValue || b.LanguageId == req.LanguageId) &&
+                (!req.IsLanguageDefault.HasValue || b.LanguageDefault == req.IsLanguageDefault))
+            .Select(bible => new ListBiblesResponse
             {
                 Name = bible.Name,
                 Abbreviation = bible.Abbreviation,
@@ -40,6 +38,7 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext) : Endpoint<Request, IR
                 IsLanguageDefault = bible.LanguageDefault,
                 HasAudio = bible.BibleBookContents.Any(bbc => bbc.AudioUrls != null),
                 HasGreekAlignment = bible.GreekAlignment,
+                ContentIteration = bible.ContentIteration,
             })
             .ToListAsync(ct);
 

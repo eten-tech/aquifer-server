@@ -1,6 +1,6 @@
-﻿namespace Aquifer.API.Endpoints.Bibles;
+namespace Aquifer.Data.Schemas;
 
-public sealed class BibleLicenseInfo
+public sealed class BibleLicenseInfoSchema
 {
     public required string Title { get; init; }
     public required LicenseCopyright Copyright { get; init; }

@@ -6,6 +6,7 @@ using Aquifer.Common.Extensions;
 using Aquifer.Common.Utilities;
 using Aquifer.Data;
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,7 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService) : En
                 EnglishLabel = rc.Resource.EnglishLabel,
                 ParentResourceName = rc.Resource.ParentResource.DisplayName,
                 ParentResourceLicenseInfo =
-                    JsonUtilities.DefaultDeserialize<ResourceLicenseInfo>(rc.Resource.ParentResource.LicenseInfo),
+                    JsonUtilities.DefaultDeserialize<ParentResourceLicenseInfoSchema>(rc.Resource.ParentResource.LicenseInfo),
                 ResourceContentId = rc.Id,
                 ResourceId = rc.ResourceId,
                 Language = new LanguageResponse

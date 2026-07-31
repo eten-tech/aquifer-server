@@ -35,6 +35,21 @@ public interface ITranslationService
 public class OpenAiOptions
 {
     public required string Model { get; init; }
+
+    /// <summary>
+    /// Whether the configured model accepts a temperature value. Reasoning models (e.g. GPT-5 and o-series) reject it.
+    /// </summary>
+    public bool SupportsTemperature { get; init; } = true;
+
+    /// <summary>
+    /// Optional reasoning effort for reasoning models (e.g. "low", "medium", "high"). Not sent when null.
+    /// </summary>
+    public string? ReasoningEffortLevel { get; init; }
+
+    /// <summary>
+    /// Optional max output token count. Not sent when null.
+    /// </summary>
+    public int? MaxOutputTokens { get; init; }
 }
 
 public sealed class OpenAiTranslationOptions
@@ -59,6 +74,7 @@ public sealed partial class OpenAiTranslationService : ITranslationService
 
     private readonly ChatClient _chatClient;
 
+    private readonly OpenAiOptions _openAiOptions;
     private readonly OpenAiTranslationOptions _options;
     private readonly float _temperature;
 
@@ -67,6 +83,7 @@ public sealed partial class OpenAiTranslationService : ITranslationService
         OpenAiOptions openAiOptions,
         IAzureKeyVaultClient keyVaultClient)
     {
+        _openAiOptions = openAiOptions;
         _options = openAiTranslationOptions;
 
         const string openAiApiKeySecretName = "OpenAiApiKey";
@@ -185,10 +202,7 @@ public sealed partial class OpenAiTranslationService : ITranslationService
                 ChatMessage.CreateUserMessage(text),
             ],
             // DO NOT reuse ChatCompletionOptions because the Open AI client mutates this object under the hood
-            new ChatCompletionOptions
-            {
-                Temperature = _temperature,
-            },
+            CreateChatCompletionOptions(_openAiOptions, _temperature),
             cancellationToken);
 
         if (chatCompletion.Value.FinishReason != ChatFinishReason.Stop)
@@ -200,6 +214,30 @@ public sealed partial class OpenAiTranslationService : ITranslationService
         }
 
         return chatCompletion.Value.Content[0].Text.Replace(Environment.NewLine, "");
+    }
+
+    internal static ChatCompletionOptions CreateChatCompletionOptions(OpenAiOptions openAiOptions, float temperature)
+    {
+        var options = new ChatCompletionOptions();
+
+        if (openAiOptions.SupportsTemperature)
+        {
+            options.Temperature = temperature;
+        }
+
+#pragma warning disable OPENAI001 // ReasoningEffortLevel is experimental in the OpenAI SDK
+        if (openAiOptions.ReasoningEffortLevel is not null)
+        {
+            options.ReasoningEffortLevel = new ChatReasoningEffortLevel(openAiOptions.ReasoningEffortLevel);
+        }
+#pragma warning restore OPENAI001
+
+        if (openAiOptions.MaxOutputTokens is not null)
+        {
+            options.MaxOutputTokenCount = openAiOptions.MaxOutputTokens.Value;
+        }
+
+        return options;
     }
 
     private string GetHtmlTranslationPrompt((string Iso6393Code, string EnglishName) destinationLanguage)

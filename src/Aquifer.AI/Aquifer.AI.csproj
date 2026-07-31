@@ -11,6 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Aquifer.Jobs.UnitTests" />
         <ProjectReference Include="..\Aquifer.Common\Aquifer.Common.csproj" />
     </ItemGroup>
 

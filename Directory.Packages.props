@@ -58,7 +58,7 @@
         </PackageVersion>
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
         <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
-        <PackageVersion Include="OpenAI" Version="2.1.0" />
+        <PackageVersion Include="OpenAI" Version="2.3.0" />
         <PackageVersion Include="Polly" Version="8.5.2" />
         <PackageVersion Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
         <PackageVersion Include="ReverseMarkdown" Version="4.6.0" />

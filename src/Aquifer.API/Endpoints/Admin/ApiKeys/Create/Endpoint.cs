@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Aquifer.API.Common;
 using Aquifer.Data;
 using Aquifer.Data.Entities;
@@ -10,8 +9,6 @@ namespace Aquifer.API.Endpoints.Admin.ApiKeys.Create;
 public class Endpoint(AquiferDbContext dbContext)
     : Endpoint<Request, Response>
 {
-    private const int ApiKeyLength = 64;
-
     public override void Configure()
     {
         Post("/admin/api-keys");
@@ -42,7 +39,8 @@ public class Endpoint(AquiferDbContext dbContext)
         string candidateKey;
         do
         {
-            candidateKey = RandomNumberGenerator.GetHexString(ApiKeyLength);
+            // equivalent to the historical SQL key generation: LOWER(REPLACE(CAST(NEWID() AS NVARCHAR(36)), '-', ''))
+            candidateKey = Guid.NewGuid().ToString("N");
         } while (await dbContext.ApiKeys.AnyAsync(x => x.ApiKey == candidateKey, ct));
 
         return candidateKey;

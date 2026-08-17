@@ -12,6 +12,7 @@ public static class PermissionName
         AssignContent = "assign:content",
         AssignOutsideCompany = "assign:outside-company",
         AssignOverride = "assign:override",
+        CreateApiKey = "create:apikey",
         CreateCommunityContent = "create:community-content",
         CreateContent = "create:content",
         CreateProject = "create:project",

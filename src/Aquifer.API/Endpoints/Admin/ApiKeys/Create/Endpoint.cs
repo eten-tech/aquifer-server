@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using Aquifer.API.Services;
+using Aquifer.API.Common;
 using Aquifer.Data;
 using Aquifer.Data.Entities;
 using FastEndpoints;
@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Aquifer.API.Endpoints.Admin.ApiKeys.Create;
 
-public class Endpoint(AquiferDbContext dbContext, IUserService userService)
+public class Endpoint(AquiferDbContext dbContext)
     : Endpoint<Request, Response>
 {
     private const int ApiKeyLength = 64;
@@ -15,17 +15,11 @@ public class Endpoint(AquiferDbContext dbContext, IUserService userService)
     public override void Configure()
     {
         Post("/admin/api-keys");
+        Permissions(PermissionName.CreateApiKey);
     }
 
     public override async Task HandleAsync(Request request, CancellationToken ct)
     {
-        var currentUser = await userService.GetUserFromJwtAsync(ct);
-        if (currentUser.Role != UserRole.Admin)
-        {
-            await SendForbiddenAsync(ct);
-            return;
-        }
-
         var apiKey = new ApiKeyEntity
         {
             ApiKey = await GenerateUniqueApiKeyAsync(ct),

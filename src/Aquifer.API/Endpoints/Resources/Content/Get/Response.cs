@@ -2,13 +2,14 @@ using System.Text.Json.Serialization;
 using Aquifer.API.Common.Dtos;
 using Aquifer.Common.Utilities;
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 
 namespace Aquifer.API.Endpoints.Resources.Content.Get;
 
 public class Response
 {
     public required string ParentResourceName { get; set; }
-    public required ResourceLicenseInfo ParentResourceLicenseInfo { get; set; }
+    public required ParentResourceLicenseInfoSchema ParentResourceLicenseInfo { get; set; }
     public required string EnglishLabel { get; set; }
     public IEnumerable<VerseReferenceResponse> VerseReferences { get; set; } = null!;
     public IEnumerable<PassageReferenceResponse> PassageReferences { get; set; } = null!;
@@ -97,8 +98,7 @@ public class VerseReferenceResponse
 {
     public required int VerseId { get; init; }
 
-    private (Data.Enums.BookId BookId, int Chapter, int Verse) TranslatedVerse =>
-        BibleUtilities.TranslateVerseId(VerseId);
+    private (Data.Enums.BookId BookId, int Chapter, int Verse) TranslatedVerse => BibleUtilities.TranslateVerseId(VerseId);
 
     public string Book => BibleBookCodeUtilities.FullNameFromId(TranslatedVerse.BookId);
     public int Chapter => TranslatedVerse.Chapter;
@@ -110,15 +110,13 @@ public class PassageReferenceResponse
     public required int StartVerseId { get; init; }
     public required int EndVerseId { get; init; }
 
-    private (Data.Enums.BookId BookId, int Chapter, int Verse) StartTranslatedVerse =>
-        BibleUtilities.TranslateVerseId(StartVerseId);
+    private (Data.Enums.BookId BookId, int Chapter, int Verse) StartTranslatedVerse => BibleUtilities.TranslateVerseId(StartVerseId);
 
     public string StartBook => BibleBookCodeUtilities.FullNameFromId(StartTranslatedVerse.BookId);
     public int StartChapter => StartTranslatedVerse.Chapter;
     public int StartVerse => StartTranslatedVerse.Verse;
 
-    private (Data.Enums.BookId BookId, int Chapter, int Verse) EndTranslatedVerse =>
-        BibleUtilities.TranslateVerseId(EndVerseId);
+    private (Data.Enums.BookId BookId, int Chapter, int Verse) EndTranslatedVerse => BibleUtilities.TranslateVerseId(EndVerseId);
 
     public string EndBook => BibleBookCodeUtilities.FullNameFromId(EndTranslatedVerse.BookId);
     public int EndChapter => EndTranslatedVerse.Chapter;

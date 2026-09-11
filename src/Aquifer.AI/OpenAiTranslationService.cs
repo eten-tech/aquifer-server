@@ -117,13 +117,20 @@ public sealed partial class OpenAiTranslationService : ITranslationService
                 nameof(text));
         }
 
+        var fullReplacement = TryGetFullTranslationPairReplacement(text, translationPairs);
+
+        if (fullReplacement is not null)
+        {
+            return fullReplacement;
+        }
+
         var prompt = GetPlainTextTranslationPrompt(destinationLanguage);
 
-        var (textWithReplacements, isFullReplacement) = ReplaceTranslationPairs(text, translationPairs);
+        var (maskedText, placeholderMap) = MaskTranslationPairs(text, translationPairs);
 
-        return isFullReplacement
-            ? textWithReplacements
-            : await CompleteChatAsync(prompt, textWithReplacements, cancellationToken);
+        var translatedText = await CompleteChatAsync(prompt, maskedText, cancellationToken);
+
+        return UnmaskTranslationPairs(translatedText, placeholderMap);
     }
 
     public async Task<string> TranslateHtmlAsync(
@@ -158,13 +165,15 @@ public sealed partial class OpenAiTranslationService : ITranslationService
                     paragraph,
                     async minifiedHtmlChunk =>
                     {
-                        var (minifiedHtmlChunkWithReplacements, _) = ReplaceTranslationPairs(minifiedHtmlChunk, translationPairs);
+                        var (maskedHtmlChunk, placeholderMap) = MaskTranslationPairs(minifiedHtmlChunk, translationPairs);
 
                         var translatedHtmlChunk = htmlTranslationPrompt == null
-                            ? minifiedHtmlChunkWithReplacements
-                            : await CompleteChatAsync(htmlTranslationPrompt, minifiedHtmlChunkWithReplacements, cancellationToken);
+                            ? maskedHtmlChunk
+                            : await CompleteChatAsync(htmlTranslationPrompt, maskedHtmlChunk, cancellationToken);
 
-                        return await CompleteChatAsync(htmlTextImprovementPrompt, translatedHtmlChunk, cancellationToken);
+                        var improvedHtmlChunk = await CompleteChatAsync(htmlTextImprovementPrompt, translatedHtmlChunk, cancellationToken);
+
+                        return UnmaskTranslationPairs(improvedHtmlChunk, placeholderMap);
                     }))
                 .ToList();
 
@@ -179,19 +188,65 @@ public sealed partial class OpenAiTranslationService : ITranslationService
         return translatedHtml.ToString();
     }
 
-    private static (string Text, bool IsFullReplace) ReplaceTranslationPairs(string text, IDictionary<string, string> translationPairs)
+    /// <summary>
+    /// Returns the translation pair's value when <paramref name="text"/> exactly matches (case-insensitively) one of the
+    /// translation pair keys, otherwise returns null. This lets callers skip AI translation entirely for exact matches.
+    /// </summary>
+    internal static string? TryGetFullTranslationPairReplacement(string text, IDictionary<string, string> translationPairs)
     {
-        foreach (var pair in translationPairs.OrderByDescending(x => x.Key.Length))
+        foreach (var pair in translationPairs)
         {
             if (string.Equals(pair.Key, text, StringComparison.InvariantCultureIgnoreCase))
             {
-                return (pair.Value, true);
+                return pair.Value;
             }
-
-            text = Regex.Replace(text, $"""\b(?:{pair.Key})\b""", pair.Value, RegexOptions.IgnoreCase);
         }
 
-        return (text, false);
+        return null;
+    }
+
+    /// <summary>
+    /// Replaces every occurrence of a translation pair key in <paramref name="text"/> with a unique placeholder token,
+    /// so that the (already-translated) pair values are never sent to the AI for translation. The returned map lets
+    /// <see cref="UnmaskTranslationPairs"/> restore the real values once AI processing is complete.
+    /// </summary>
+    internal static (string Text, IDictionary<string, string> PlaceholderMap) MaskTranslationPairs(
+        string text,
+        IDictionary<string, string> translationPairs)
+    {
+        var placeholderMap = new Dictionary<string, string>();
+
+        foreach (var pair in translationPairs.OrderByDescending(x => x.Key.Length))
+        {
+            var pattern = $"""\b(?:{pair.Key})\b""";
+
+            if (!Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase))
+            {
+                continue;
+            }
+
+            var placeholder = $"__TRANSLATION_PAIR_{placeholderMap.Count}__";
+
+            text = Regex.Replace(text, pattern, placeholder, RegexOptions.IgnoreCase);
+            placeholderMap[placeholder] = pair.Value;
+        }
+
+        return (text, placeholderMap);
+    }
+
+    /// <summary>
+    /// Replaces every placeholder token produced by <see cref="MaskTranslationPairs"/> with its real translation pair
+    /// value. Placeholders that are no longer present in <paramref name="text"/> (e.g. dropped during AI processing)
+    /// are left alone.
+    /// </summary>
+    internal static string UnmaskTranslationPairs(string text, IDictionary<string, string> placeholderMap)
+    {
+        foreach (var (placeholder, value) in placeholderMap)
+        {
+            text = text.Replace(placeholder, value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return text;
     }
 
     private async Task<string> CompleteChatAsync(string prompt, string text, CancellationToken cancellationToken)

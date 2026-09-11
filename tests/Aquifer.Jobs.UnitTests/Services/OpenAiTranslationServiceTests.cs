@@ -70,4 +70,81 @@ public sealed class OpenAiTranslationServiceTests
 
         Assert.Equal(1_000, options.MaxOutputTokenCount);
     }
+
+    [Fact]
+    public void MaskTranslationPairs_WhenTextContainsPairKey_ReplacesItWithAPlaceholderAndReturnsTheMap()
+    {
+        var translationPairs = new Dictionary<string, string> { ["World"] = "Monde" };
+
+        var (maskedText, placeholderMap) = OpenAiTranslationService.MaskTranslationPairs("Hello World", translationPairs);
+
+        var placeholder = Assert.Single(placeholderMap).Key;
+        Assert.Equal("Monde", placeholderMap[placeholder]);
+        Assert.Equal($"Hello {placeholder}", maskedText);
+        Assert.DoesNotContain("World", maskedText);
+    }
+
+    [Fact]
+    public void MaskTranslationPairs_WhenTextDoesNotContainAnyPairKey_ReturnsOriginalTextAndAnEmptyMap()
+    {
+        var translationPairs = new Dictionary<string, string> { ["Foo"] = "Bar" };
+
+        var (maskedText, placeholderMap) = OpenAiTranslationService.MaskTranslationPairs("Hello World", translationPairs);
+
+        Assert.Equal("Hello World", maskedText);
+        Assert.Empty(placeholderMap);
+    }
+
+    [Fact]
+    public void MaskTranslationPairs_WhenMultipleKeysMatch_MasksBothIndependently()
+    {
+        var translationPairs = new Dictionary<string, string> { ["Hello"] = "Bonjour", ["World"] = "Monde" };
+
+        var (maskedText, placeholderMap) = OpenAiTranslationService.MaskTranslationPairs("Hello World", translationPairs);
+
+        Assert.Equal(2, placeholderMap.Count);
+        Assert.DoesNotContain("Hello", maskedText);
+        Assert.DoesNotContain("World", maskedText);
+        Assert.Equal("Bonjour Monde", OpenAiTranslationService.UnmaskTranslationPairs(maskedText, placeholderMap));
+    }
+
+    [Fact]
+    public void UnmaskTranslationPairs_WhenPlaceholderIsPresent_RestoresThePairValue()
+    {
+        var placeholderMap = new Dictionary<string, string> { ["__TRANSLATION_PAIR_0__"] = "Monde" };
+
+        var text = OpenAiTranslationService.UnmaskTranslationPairs("Hello __TRANSLATION_PAIR_0__", placeholderMap);
+
+        Assert.Equal("Hello Monde", text);
+    }
+
+    [Fact]
+    public void UnmaskTranslationPairs_WhenPlaceholderIsMissing_LeavesTextUnchanged()
+    {
+        var placeholderMap = new Dictionary<string, string> { ["__TRANSLATION_PAIR_0__"] = "Monde" };
+
+        var text = OpenAiTranslationService.UnmaskTranslationPairs("Hello World", placeholderMap);
+
+        Assert.Equal("Hello World", text);
+    }
+
+    [Fact]
+    public void TryGetFullTranslationPairReplacement_WhenTextExactlyMatchesPairKey_ReturnsPairValue()
+    {
+        var translationPairs = new Dictionary<string, string> { ["World"] = "Monde" };
+
+        var replacement = OpenAiTranslationService.TryGetFullTranslationPairReplacement("world", translationPairs);
+
+        Assert.Equal("Monde", replacement);
+    }
+
+    [Fact]
+    public void TryGetFullTranslationPairReplacement_WhenTextDoesNotMatchAnyPairKey_ReturnsNull()
+    {
+        var translationPairs = new Dictionary<string, string> { ["World"] = "Monde" };
+
+        var replacement = OpenAiTranslationService.TryGetFullTranslationPairReplacement("Hello World", translationPairs);
+
+        Assert.Null(replacement);
+    }
 }

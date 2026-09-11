@@ -1,4 +1,6 @@
 using Aquifer.AI;
+using Aquifer.Common.Clients;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI.Chat;
 
 #pragma warning disable OPENAI001 // ReasoningEffortLevel is experimental in the OpenAI SDK
@@ -15,6 +17,28 @@ public sealed class OpenAiTranslationServiceTests
         {
             Model = "gpt-4o",
         };
+    }
+
+    private static OpenAiTranslationService CreateService(OpenAiTranslationOptions? translationOptions = null)
+    {
+        return new OpenAiTranslationService(
+            translationOptions ?? new OpenAiTranslationOptions
+            {
+                HtmlBasePrompt = "html-base-prompt",
+                LanguageSpecificTextImprovementPromptAppendixByLanguageIso6393CodeMap = new Dictionary<string, string>(),
+                PlainTextTranslationPromptFormatString = "translate-to-{0}",
+                Temperature = Temperature,
+                TextImprovementPromptFormatString = "improve-{0}",
+                TranslationPromptFormatString = "translate-then-{0}",
+            },
+            CreateOptions(),
+            new FakeAzureKeyVaultClient(),
+            NullLogger<OpenAiTranslationService>.Instance);
+    }
+
+    private sealed class FakeAzureKeyVaultClient : IAzureKeyVaultClient
+    {
+        public Task<string> GetSecretAsync(string secretName) => Task.FromResult("fake-api-key");
     }
 
     [Fact]
@@ -72,79 +96,119 @@ public sealed class OpenAiTranslationServiceTests
     }
 
     [Fact]
-    public void MaskTranslationPairs_WhenTextContainsPairKey_ReplacesItWithAPlaceholderAndReturnsTheMap()
-    {
-        var translationPairs = new Dictionary<string, string> { ["World"] = "Monde" };
-
-        var (maskedText, placeholderMap) = OpenAiTranslationService.MaskTranslationPairs("Hello World", translationPairs);
-
-        var placeholder = Assert.Single(placeholderMap).Key;
-        Assert.Equal("Monde", placeholderMap[placeholder]);
-        Assert.Equal($"Hello {placeholder}", maskedText);
-        Assert.DoesNotContain("World", maskedText);
-    }
-
-    [Fact]
-    public void MaskTranslationPairs_WhenTextDoesNotContainAnyPairKey_ReturnsOriginalTextAndAnEmptyMap()
-    {
-        var translationPairs = new Dictionary<string, string> { ["Foo"] = "Bar" };
-
-        var (maskedText, placeholderMap) = OpenAiTranslationService.MaskTranslationPairs("Hello World", translationPairs);
-
-        Assert.Equal("Hello World", maskedText);
-        Assert.Empty(placeholderMap);
-    }
-
-    [Fact]
-    public void MaskTranslationPairs_WhenMultipleKeysMatch_MasksBothIndependently()
-    {
-        var translationPairs = new Dictionary<string, string> { ["Hello"] = "Bonjour", ["World"] = "Monde" };
-
-        var (maskedText, placeholderMap) = OpenAiTranslationService.MaskTranslationPairs("Hello World", translationPairs);
-
-        Assert.Equal(2, placeholderMap.Count);
-        Assert.DoesNotContain("Hello", maskedText);
-        Assert.DoesNotContain("World", maskedText);
-        Assert.Equal("Bonjour Monde", OpenAiTranslationService.UnmaskTranslationPairs(maskedText, placeholderMap));
-    }
-
-    [Fact]
-    public void UnmaskTranslationPairs_WhenPlaceholderIsPresent_RestoresThePairValue()
-    {
-        var placeholderMap = new Dictionary<string, string> { ["__TRANSLATION_PAIR_0__"] = "Monde" };
-
-        var text = OpenAiTranslationService.UnmaskTranslationPairs("Hello __TRANSLATION_PAIR_0__", placeholderMap);
-
-        Assert.Equal("Hello Monde", text);
-    }
-
-    [Fact]
-    public void UnmaskTranslationPairs_WhenPlaceholderIsMissing_LeavesTextUnchanged()
-    {
-        var placeholderMap = new Dictionary<string, string> { ["__TRANSLATION_PAIR_0__"] = "Monde" };
-
-        var text = OpenAiTranslationService.UnmaskTranslationPairs("Hello World", placeholderMap);
-
-        Assert.Equal("Hello World", text);
-    }
-
-    [Fact]
     public void TryGetFullTranslationPairReplacement_WhenTextExactlyMatchesPairKey_ReturnsPairValue()
     {
-        var translationPairs = new Dictionary<string, string> { ["World"] = "Monde" };
+        var translationPairs = new Dictionary<string, string> { ["Yahweh"] = "YHWH-translated" };
 
-        var replacement = OpenAiTranslationService.TryGetFullTranslationPairReplacement("world", translationPairs);
+        var result = OpenAiTranslationService.TryGetFullTranslationPairReplacement("yahweh", translationPairs);
 
-        Assert.Equal("Monde", replacement);
+        Assert.Equal("YHWH-translated", result);
     }
 
     [Fact]
     public void TryGetFullTranslationPairReplacement_WhenTextDoesNotMatchAnyPairKey_ReturnsNull()
     {
-        var translationPairs = new Dictionary<string, string> { ["World"] = "Monde" };
+        var translationPairs = new Dictionary<string, string> { ["Yahweh"] = "YHWH-translated" };
 
-        var replacement = OpenAiTranslationService.TryGetFullTranslationPairReplacement("Hello World", translationPairs);
+        var result = OpenAiTranslationService.TryGetFullTranslationPairReplacement("Yahweh is great", translationPairs);
 
-        Assert.Null(replacement);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void MaskTranslationPairs_WhenTextContainsPairKey_ReplacesItWithAPlaceholderAndReturnsTheMap()
+    {
+        var translationPairs = new Dictionary<string, string> { ["Yahweh"] = "YHWH-translated" };
+
+        var (maskedText, placeholderValueMap) = OpenAiTranslationService.MaskTranslationPairs("Yahweh is great", translationPairs);
+
+        Assert.DoesNotContain("Yahweh", maskedText);
+        Assert.Single(placeholderValueMap);
+        var placeholder = Assert.Single(placeholderValueMap.Keys);
+        Assert.Contains(placeholder, maskedText);
+        Assert.Equal("YHWH-translated", placeholderValueMap[placeholder]);
+    }
+
+    [Fact]
+    public void MaskTranslationPairs_WhenTextDoesNotContainAnyPairKey_ReturnsOriginalTextAndAnEmptyMap()
+    {
+        var translationPairs = new Dictionary<string, string> { ["Yahweh"] = "YHWH-translated" };
+
+        var (maskedText, placeholderValueMap) = OpenAiTranslationService.MaskTranslationPairs("The Lord is great", translationPairs);
+
+        Assert.Equal("The Lord is great", maskedText);
+        Assert.Empty(placeholderValueMap);
+    }
+
+    [Fact]
+    public void MaskTranslationPairs_WhenMultipleKeysMatch_MasksBothIndependently()
+    {
+        var translationPairs = new Dictionary<string, string>
+        {
+            ["Yahweh"] = "YHWH-translated",
+            ["Moses"] = "Moses-translated",
+        };
+
+        var (maskedText, placeholderValueMap) = OpenAiTranslationService.MaskTranslationPairs("Yahweh spoke to Moses", translationPairs);
+
+        Assert.DoesNotContain("Yahweh", maskedText);
+        Assert.DoesNotContain("Moses", maskedText);
+        Assert.Equal(2, placeholderValueMap.Count);
+    }
+
+    [Fact]
+    public void UnmaskTranslationPairs_WhenPlaceholderIsPresent_RestoresThePairValue()
+    {
+        var placeholderValueMap = new Dictionary<string, string> { ["⟦AQP0⟧"] = "YHWH-translated" };
+
+        var result = OpenAiTranslationService.UnmaskTranslationPairs(
+            "⟦AQP0⟧ is great",
+            placeholderValueMap,
+            NullLogger.Instance);
+
+        Assert.Equal("YHWH-translated is great", result);
+    }
+
+    [Fact]
+    public void UnmaskTranslationPairs_WhenPlaceholderIsMissing_LeavesTextUnchanged()
+    {
+        var placeholderValueMap = new Dictionary<string, string> { ["⟦AQP0⟧"] = "YHWH-translated" };
+
+        var result = OpenAiTranslationService.UnmaskTranslationPairs(
+            "The text no longer has the token",
+            placeholderValueMap,
+            NullLogger.Instance);
+
+        Assert.Equal("The text no longer has the token", result);
+    }
+
+    [Fact]
+    public void GetHtmlTranslationPrompt_ShouldIncludeThePlaceholderPreservationInstruction()
+    {
+        var service = CreateService();
+
+        var prompt = service.GetHtmlTranslationPrompt(("ENG", "English"));
+
+        Assert.Contains(OpenAiTranslationService.PlaceholderPreservationInstruction, prompt);
+    }
+
+    [Fact]
+    public void GetHtmlTextImprovementPrompt_ShouldIncludeThePlaceholderPreservationInstruction()
+    {
+        var service = CreateService();
+
+        var prompt = service.GetHtmlTextImprovementPrompt(("ENG", "English"));
+
+        Assert.Contains(OpenAiTranslationService.PlaceholderPreservationInstruction, prompt);
+    }
+
+    [Fact]
+    public void GetPlainTextTranslationPrompt_ShouldIncludeThePlaceholderPreservationInstruction()
+    {
+        var service = CreateService();
+
+        var prompt = service.GetPlainTextTranslationPrompt(("ENG", "English"));
+
+        Assert.Contains(OpenAiTranslationService.PlaceholderPreservationInstruction, prompt);
     }
 }

@@ -25,7 +25,7 @@ public sealed class OpenAiTranslationServiceTests
             translationOptions ?? new OpenAiTranslationOptions
             {
                 HtmlBasePrompt = "html-base-prompt",
-                LanguageSpecificTextImprovementPromptAppendixByLanguageIso6393CodeMap = new Dictionary<string, string>(),
+                LanguageSpecificTextImprovementPromptAppendixByLanguageIso6393CodeMap = [],
                 PlainTextTranslationPromptFormatString = "translate-to-{0}",
                 Temperature = Temperature,
                 TextImprovementPromptFormatString = "improve-{0}",
@@ -38,7 +38,10 @@ public sealed class OpenAiTranslationServiceTests
 
     private sealed class FakeAzureKeyVaultClient : IAzureKeyVaultClient
     {
-        public Task<string> GetSecretAsync(string secretName) => Task.FromResult("fake-api-key");
+        public Task<string> GetSecretAsync(string secretName)
+        {
+            return Task.FromResult("fake-api-key");
+        }
     }
 
     [Fact]

@@ -92,7 +92,7 @@ system message (the prompt) and a user message (the text/HTML to process).
 | Reasoning effort | `CreateChatCompletionOptions` — set only if non-null | `OpenAiOptions.ReasoningEffortLevel` (appsettings) |
 | Max output tokens | `CreateChatCompletionOptions` — set only if non-null | `OpenAiOptions.MaxOutputTokens` (appsettings) |
 | System prompt | `GetHtmlTranslationPrompt`, `GetHtmlTextImprovementPrompt`, `GetPlainTextTranslationPrompt` — format target language name into a template, plus a per-language appendix for the improvement pass | `OpenAiTranslationOptions`: `HtmlBasePrompt`, `TranslationPromptFormatString`, `TextImprovementPromptFormatString`, `PlainTextTranslationPromptFormatString`, `LanguageSpecificTextImprovementPromptAppendixByLanguageIso6393CodeMap` (all in `appsettings.json`) |
-| User message content | `TranslateResourceCoreAsync` chunks Tiptap JSON to HTML per paragraph; `ReplaceTranslationPairs` substitutes glossary terms before sending | Source `ResourceContentVersion.Content`, `TranslationPairs` DB table |
+| User message content | `TranslateResourceCoreAsync` chunks Tiptap JSON to HTML per paragraph; `MaskTranslationPairs` masks glossary terms behind placeholder tokens before sending | Source `ResourceContentVersion.Content`, `TranslationPairs` DB table |
 | Translate vs. improve-only | `TranslateHtmlAsync`'s `shouldOnlyPerformTextImprovement` flag | `isAquiferization` in `TranslateResourceCoreAsync`, based on `ResourceContent.Status` |
 
 Configuration-driven parameters (model, temperature, reasoning effort, max
@@ -139,3 +139,26 @@ These templates are assembled into the final system message string by
 The resulting string is passed into `CompleteChatAsync` as `prompt` and sent
 to OpenAI as the system message via `ChatMessage.CreateSystemMessage(prompt)`,
 paired with the content to translate/improve as the user message.
+
+### Translation pair handling (placeholder masking)
+
+Translation pairs are no longer substituted into the text as literal
+target-language values before calling OpenAI. Instead,
+`OpenAiTranslationService.MaskTranslationPairs` replaces each matched
+glossary term with an opaque placeholder token (e.g. `⟦AQP0⟧`) before any
+OpenAI call. The masked text goes through both the translation pass and the
+text-improvement pass; `UnmaskTranslationPairs` then replaces each
+placeholder with its real glossary value once both passes are complete,
+before the chunk is returned to the caller. This guarantees the human
+translator's approved term survives the "improve grammar and clarity" pass
+intact, rather than relying on the model happening not to touch it — a
+model-agnostic guarantee where the earlier substitution approach depended
+on model behavior that changed between `gpt-4o` and newer reasoning models.
+The system prompts (`OpenAiTranslationService.PlaceholderPreservationInstruction`)
+also explicitly instruct the model not to alter placeholder tokens, as
+defense in depth; if the model still drops or mangles one, a warning is
+logged (see `UnmaskTranslationPairs`).
+
+If the full text being translated exactly matches a translation pair key
+(`TryGetFullTranslationPairReplacement`), OpenAI is never called at all —
+the pair's value is returned directly, as before.

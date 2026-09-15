@@ -238,7 +238,10 @@ public sealed partial class OpenAiTranslationService : ITranslationService
 
         foreach (var pair in translationPairs.OrderByDescending(x => x.Key.Length))
         {
-            var pattern = $"""\b(?:{pair.Key})\b""";
+            // Escape the key: it's a free-text glossary term from the TranslationPairs table (no character
+            // restrictions beyond a minimum length), so it may contain regex metacharacters that would otherwise
+            // throw (e.g. an unbalanced paren) or silently over-match (e.g. "." or "*").
+            var pattern = $"""\b(?:{Regex.Escape(pair.Key)})\b""";
 
             if (!Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase))
             {

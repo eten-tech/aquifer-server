@@ -144,6 +144,19 @@ public sealed class OpenAiTranslationServiceTests
     }
 
     [Fact]
+    public void MaskTranslationPairs_WhenKeyContainsRegexMetacharacters_TreatsTheKeyAsALiteral()
+    {
+        var translationPairs = new Dictionary<string, string> { ["Song of Songs (Canticles"] = "Canticles-translated" };
+
+        var (maskedText, placeholderValueMap) = OpenAiTranslationService.MaskTranslationPairs(
+            "Song of Songs (Canticles is a book",
+            translationPairs);
+
+        Assert.DoesNotContain("Song of Songs (Canticles", maskedText);
+        Assert.Single(placeholderValueMap);
+    }
+
+    [Fact]
     public void MaskTranslationPairs_WhenMultipleKeysMatch_MasksBothIndependently()
     {
         var translationPairs = new Dictionary<string, string>

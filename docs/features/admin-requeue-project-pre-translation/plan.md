@@ -41,12 +41,13 @@
 | `src/Aquifer.Jobs/Subscribers/TranslationMessageSubscriber.cs` | DTO fields; subscriber filtering; origin selection; conditional post-translation steps. |
 | `tests/Aquifer.Common.UnitTests/Messages/TranslateProjectResourcesMessageTests.cs` | Backward-compatible deserialization. |
 | `tests/Aquifer.Jobs.UnitTests/Subscribers/ProjectPreTranslationOptionsTests.cs` | Origin selection + resource-ID filtering helpers. |
-| `tests/Aquifer.API.IntegrationTests/Endpoints/Admin/Projects/PreTranslate/EndpointTests.cs` | Authorization + 404 negative cases. |
+| `tests/Aquifer.API.IntegrationTests/Endpoints/Admin/Projects/PreTranslate/EndpointTests.cs` | Authorization negative cases. (The 404 case was dropped: it needs an admin client the harness can't have until Auth0 is configured.) |
 | `docs/ai-translation-workflow.md` | Document the admin re-run path. |
 | **content-manager-web** | |
 | `src/lib/stores/auth.ts` | Add `Permission.RequeuePreTranslationProject`. |
-| `src/lib/utils/projects.ts` | `requeueProjectPreTranslation(id, options)` + `parseResourceContentIds`. |
-| `src/lib/utils/projects.test.ts` | Tests for payload shaping and ID parsing. |
+| `src/lib/utils/projects.ts` | `requeueProjectPreTranslation(id, options)`. |
+| `src/lib/utils/resource-content-ids.ts` | `parseResourceContentIds`. (Its own module, not `projects.ts`: importing that drags `$env/static/public` and the Auth0 client into the test.) |
+| `src/lib/utils/resource-content-ids.test.ts` | Tests for ID parsing. |
 | `src/routes/admin/projects/[projectId]/+page.ts` | Permission guard + project load. |
 | `src/routes/admin/projects/[projectId]/+page.svelte` | Options form + confirmation. |
 | `src/routes/projects/[projectId]/+page.svelte` | Permission-gated link to the admin page. |
@@ -57,12 +58,12 @@
 
 **Files:** Modify `src/Aquifer.API/Common/Permissions.cs`
 
-- [ ] **Step 1:** Add to `PermissionName`, keeping the existing alphabetical-by-constant-name ordering:
+- [x] **Step 1:** Add to `PermissionName`, keeping the existing alphabetical-by-constant-name ordering:
   ```csharp
   RequeuePreTranslationProject = "requeue-pre-translation:project",
   ```
   It sorts between `ReadUsers` and `ReviewContent` ("Req" > "Rea", "Req" < "Rev"), so it is a plain insertion into the middle of the existing single `public const string` declaration list — no change to the first or last entry.
-- [ ] **Step 2:** Build. No test — this is a constant with no behavior.
+- [x] **Step 2:** Build. No test — this is a constant with no behavior.
 
 ---
 
@@ -83,7 +84,7 @@ public sealed record TranslateProjectResourcesMessage(
     IReadOnlyList<int>? ResourceContentIds = null);
 ```
 
-- [ ] **Step 1: Write the failing test.** New file, asserting that a message serialized in the *old* two-field shape still deserializes with today's defaults, and that a full-options message round-trips:
+- [x] **Step 1: Write the failing test.** New file, asserting that a message serialized in the *old* two-field shape still deserializes with today's defaults, and that a full-options message round-trips:
   ```csharp
   [Fact]
   public void Deserialize_WhenJsonHasOnlyTheOriginalFields_UsesDefaultsForTheNewOptions()
@@ -112,7 +113,7 @@ public sealed record TranslateProjectResourcesMessage(
   }
   ```
   FluentAssertions and xunit.v3 are `PackageReference`d for every test project by `tests/Directory.Build.props`, which also declares `<Using Include="FluentAssertions" />` and `<Using Include="Xunit" />` — so `Should()` and `[Fact]` need no `using` statements. Note that the existing files in `Aquifer.Common.UnitTests` happen to use plain `Assert.Equal`; either style compiles, and `Should()` matches the newer tests elsewhere in the repo.
-- [ ] **Step 2:** Add the four parameters to the record. Run the tests; both should pass.
+- [x] **Step 2:** Add the four parameters to the record. Run the tests; both should pass.
 
 ---
 
@@ -122,12 +123,12 @@ public sealed record TranslateProjectResourcesMessage(
 - Create: `src/Aquifer.API/Endpoints/Admin/Projects/PreTranslate/{Request,Validator,Endpoint}.cs`
 - Test: `tests/Aquifer.API.IntegrationTests/Endpoints/Admin/Projects/PreTranslate/EndpointTests.cs` (new)
 
-- [ ] **Step 1: Write the failing tests.** Model on `tests/Aquifer.API.IntegrationTests/Endpoints/Resources/Content/Get/EndpointTests.cs`. Cover only what is safe to run against the real app — none of these reach the publish call:
+- [x] **Step 1: Write the failing tests.** Model on `tests/Aquifer.API.IntegrationTests/Endpoints/Resources/Content/Get/EndpointTests.cs`. Cover only what is safe to run against the real app — none of these reach the publish call:
   - no API key → `Unauthorized`
   - `AnonymousClient` → `Unauthorized`
   - `EditorClient`, `ManagerClient`, `ReviewerClient` → `Forbidden` (confirm the actual status FastEndpoints returns for a failed `Permissions()` check and assert that; adjust if it is `Unauthorized`)
   - a plainly non-existent project ID (e.g. `int.MaxValue`) with a sufficiently-permissioned client → `NotFound`. If no harness client can hold the new permission until Auth0 is configured, write this test and mark it skipped with a comment pointing at the Auth0 prerequisite, rather than deleting it.
-- [ ] **Step 2: `Request.cs`:**
+- [x] **Step 2: `Request.cs`:**
   ```csharp
   public record Request
   {
@@ -138,8 +139,8 @@ public sealed record TranslateProjectResourcesMessage(
       public IReadOnlyList<int>? ResourceContentIds { get; set; }
   }
   ```
-- [ ] **Step 3: `Validator.cs`:** `RuleFor(x => x.Id).GreaterThan(0);` and, when `ResourceContentIds` is non-null, require every element `> 0`. Membership in the project is a DB check and belongs in the endpoint, not here.
-- [ ] **Step 4: `Endpoint.cs`.** Constructor injects `AquiferDbContext`, `IUserService`, `ITranslationMessagePublisher`, and `ILogger<Endpoint>`. Configure:
+- [x] **Step 3: `Validator.cs`:** `RuleFor(x => x.Id).GreaterThan(0);` and, when `ResourceContentIds` is non-null, require every element `> 0`. Membership in the project is a DB check and belongs in the endpoint, not here.
+- [x] **Step 4: `Endpoint.cs`.** Constructor injects `AquiferDbContext`, `IUserService`, `ITranslationMessagePublisher`, and `ILogger<Endpoint>`. Configure:
   ```csharp
   Post("/admin/projects/{Id}/pre-translate");
   Permissions(PermissionName.RequeuePreTranslationProject);
@@ -156,7 +157,7 @@ public sealed record TranslateProjectResourcesMessage(
   9. `await SendAsync(null, StatusCodes.Status202Accepted, ct);` (confirm the idiomatic FastEndpoints call for a 202 with no body in this version and use it consistently).
 
   Do **not** create snapshots and do **not** set `project.Started`. There is no `SaveChangesAsync` in this handler.
-- [ ] **Step 5:** Run the integration tests.
+- [x] **Step 5:** Run the integration tests.
 
 ---
 
@@ -166,13 +167,13 @@ public sealed record TranslateProjectResourcesMessage(
 
 This is the one substantive logic change. Keep it mechanical and re-read the two flows before editing.
 
-- [ ] **Step 1: DTOs** (near line 965):
+- [x] **Step 1: DTOs** (near line 965):
   - `OrchestrateProjectResourcesTranslationDto` gains `bool ShouldForceRetranslation`, `bool ShouldSkipCompanyLeadAssignment`, `bool ShouldSkipProjectStartedNotification`.
   - `TranslateResourceActivityDto` gains `bool ShouldForceRetranslation`.
   - `UpdateProjectPostTranslationActivityDto` gains `bool ShouldSkipCompanyLeadAssignment`, `bool ShouldSkipProjectStartedNotification`.
 
   These are durable-function payloads. In-flight orchestrations mid-replay across a deploy will see the new fields default to `false`, which matches today's behavior.
-- [ ] **Step 2: Subscriber `ProcessAsync`** (the `TranslateProjectResourcesMessage` overload). After loading `projectResourceContentIds`, if `message.ResourceContentIds` is non-null and non-empty, intersect:
+- [x] **Step 2: Subscriber `ProcessAsync`** (the `TranslateProjectResourcesMessage` overload). After loading `projectResourceContentIds`, if `message.ResourceContentIds` is non-null and non-empty, intersect:
   ```csharp
   var requestedIds = message.ResourceContentIds;
   if (requestedIds is { Count: > 0 })
@@ -186,20 +187,20 @@ This is the one substantive logic change. Keep it mechanical and re-read the two
   }
   ```
   Keep the existing "project has no resource contents" throw ahead of this. Pass the three option flags into the `OrchestrateProjectResourcesTranslationDto`.
-- [ ] **Step 3: `OrchestrateProjectResourcesTranslationAsync`.** Select the origin once, outside the `Select`:
+- [x] **Step 3: `OrchestrateProjectResourcesTranslationAsync`.** Select the origin once, outside the `Select`:
   ```csharp
   var translationOrigin = dto.ShouldForceRetranslation
       ? TranslationOrigin.BasicTranslationOnly
       : TranslationOrigin.Project;
   ```
   Pass `translationOrigin` and `dto.ShouldForceRetranslation` into each `TranslateResourceActivityDto`, and the two skip flags into `UpdateProjectPostTranslationActivityDto`. Leave the `catch` / poison-queue block untouched.
-- [ ] **Step 4: `TranslateResourceViaActivityAsync`.** Replace the hardcoded `false` with `dto.ShouldForceRetranslation`.
-- [ ] **Step 5: `UpdateProjectPostTranslationAsync`.** Make both halves conditional:
+- [x] **Step 4: `TranslateResourceViaActivityAsync`.** Replace the hardcoded `false` with `dto.ShouldForceRetranslation`.
+- [x] **Step 5: `UpdateProjectPostTranslationAsync`.** Make both halves conditional:
   - Move the `CompanyLeadUserId ?? throw` **inside** the assignment branch. Today it throws unconditionally; with assignment skipped, a project with no company lead must not fail the activity.
   - Wrap the query/assign/`SaveChangesAsync` block in `if (!dto.ShouldSkipCompanyLeadAssignment)`.
   - Wrap `PublishSendProjectStartedNotificationMessageAsync` in `if (!dto.ShouldSkipProjectStartedNotification)`.
   - Log which steps were skipped.
-- [ ] **Step 6:** Build and run the full server test suite. Re-read `Projects/Start/Endpoint.cs`'s publish call and confirm it still compiles unchanged against the new record — it should, because every new parameter is optional.
+- [x] **Step 6:** Build and run the full server test suite. Re-read `Projects/Start/Endpoint.cs`'s publish call and confirm it still compiles unchanged against the new record — it should, because every new parameter is optional.
 
 ---
 
@@ -209,11 +210,11 @@ This is the one substantive logic change. Keep it mechanical and re-read the two
 
 The orchestration methods are not directly unit-testable (durable-function context, DB, injected services). Rather than contorting the tests, extract the two pure decisions made in task 4 into `internal static` helpers on `TranslationMessageSubscriber` and test those:
 
-- [ ] **Step 1:** Check whether `Aquifer.Jobs` already has `InternalsVisibleTo` for `Aquifer.Jobs.UnitTests` (`Aquifer.AI` does, per the translation-pairs work). If not, add it.
-- [ ] **Step 2: Write the failing tests** for:
+- [x] **Step 1:** Check whether `Aquifer.Jobs` already has `InternalsVisibleTo` for `Aquifer.Jobs.UnitTests` (`Aquifer.AI` does, per the translation-pairs work). If not, add it.
+- [x] **Step 2: Write the failing tests** for:
   - `internal static TranslationOrigin GetProjectTranslationOrigin(bool shouldForceRetranslation)` → `BasicTranslationOnly` when true, `Project` when false.
   - `internal static IReadOnlyList<int> FilterRequestedResourceContentIds(IReadOnlyList<int> projectIds, IReadOnlyList<int>? requestedIds)` → returns all project IDs when `requestedIds` is null or empty; returns only the intersection otherwise; ignores requested IDs not in the project; deduplicates.
-- [ ] **Step 3:** Extract the helpers and call them from task 4's code paths. Run the tests.
+- [x] **Step 3:** Extract the helpers and call them from task 4's code paths. Run the tests.
 
 ---
 
@@ -221,7 +222,7 @@ The orchestration methods are not directly unit-testable (durable-function conte
 
 **Files:** Modify `docs/ai-translation-workflow.md`
 
-- [ ] **Step 1:** Read the existing project-translation section and add a subsection covering: the endpoint, the permission, what each option does, the `BasicTranslationOnly` coupling and its consequence (a forced run can overwrite in-progress editor content), and that this replaces the manual poison-queue replay. Match the document's existing voice; do not restate the design doc.
+- [x] **Step 1:** Read the existing project-translation section and add a subsection covering: the endpoint, the permission, what each option does, the `BasicTranslationOnly` coupling and its consequence (a forced run can overwrite in-progress editor content), and that this replaces the manual poison-queue replay. Match the document's existing voice; do not restate the design doc.
 
 ---
 
@@ -231,13 +232,13 @@ The orchestration methods are not directly unit-testable (durable-function conte
 - Modify: `src/lib/stores/auth.ts`, `src/lib/utils/projects.ts`
 - Test: `src/lib/utils/projects.test.ts`
 
-- [ ] **Step 1:** Add `RequeuePreTranslationProject = 'requeue-pre-translation:project'` to the `Permission` enum. The enum is loosely grouped rather than strictly sorted — place it sensibly and match the surrounding style.
-- [ ] **Step 2: Write the failing tests** for a `parseResourceContentIds(input: string): { ids: number[]; invalid: string[] }` helper — comma and/or whitespace separated, trims, drops empties, dedupes, returns empty for blank input, and reports non-numeric entries in `invalid` rather than silently coercing (`NaN` reaching the API would be a confusing 400).
+- [x] **Step 1:** Add `RequeuePreTranslationProject = 'requeue-pre-translation:project'` to the `Permission` enum. The enum is loosely grouped rather than strictly sorted — place it sensibly and match the surrounding style.
+- [x] **Step 2: Write the failing tests** for a `parseResourceContentIds(input: string): { ids: number[]; invalid: string[] }` helper — comma and/or whitespace separated, trims, drops empties, dedupes, returns empty for blank input, and reports non-numeric entries in `invalid` rather than silently coercing (`NaN` reaching the API would be a confusing 400).
 
   **Do not reuse the existing `parseNumbersListFromString` in `src/lib/utils/number-list-parser.ts`**, despite the apparent overlap. It is built for bounded ranges (it requires `min`/`max`, expands `1-5` and `all`, and **silently discards** anything outside the bounds). Resource content IDs have no natural upper bound, and silently dropping an ID the admin typed is exactly the failure mode this helper exists to prevent — the admin would believe they queued five resources and get four. Leave that function alone; it has three existing callers. Add a comment on the new helper saying why it is separate, so the duplication reads as deliberate.
 
   This will be the repo's first substantive vitest file — `src/index.test.ts` is a placeholder `1 + 2 === 3` test. Follow its `describe`/`it`/`expect` import style from `vitest`.
-- [ ] **Step 3:** Implement `parseResourceContentIds`, and alongside `startProject`:
+- [x] **Step 3:** Implement `parseResourceContentIds`, and alongside `startProject`:
   ```ts
   export async function requeueProjectPreTranslation(id: number | string, options: {
       shouldForceRetranslation: boolean;
@@ -248,7 +249,7 @@ The orchestration methods are not directly unit-testable (durable-function conte
       await postToApi(`/admin/projects/${id}/pre-translate`, options);
   }
   ```
-- [ ] **Step 4:** Run `yarn test` (vitest).
+- [x] **Step 4:** Run `yarn test` (vitest).
 
 ---
 
@@ -256,15 +257,15 @@ The orchestration methods are not directly unit-testable (durable-function conte
 
 **Files:** Create `src/routes/admin/projects/[projectId]/+page.ts` and `+page.svelte`
 
-- [ ] **Step 1: `+page.ts`.** Copy the guard from `src/routes/admin/api-keys/create/+page.ts` exactly, swapping the permission. Then load the project for the ID in `params` so the page can show its name and started date; reuse whatever loader `src/routes/projects/[projectId]/+page.ts` uses rather than inventing a new fetch.
-- [ ] **Step 2: `+page.svelte`.** Runes-based, matching the API-keys page's structure and Tailwind idiom:
+- [x] **Step 1: `+page.ts`.** Copy the guard from `src/routes/admin/api-keys/create/+page.ts` exactly, swapping the permission. Then load the project for the ID in `params` so the page can show its name and started date; reuse whatever loader `src/routes/projects/[projectId]/+page.ts` uses rather than inventing a new fetch.
+- [x] **Step 2: `+page.svelte`.** Runes-based, matching the API-keys page's structure and Tailwind idiom:
   - `BackButton`, heading naming the project and ID, and its started date.
   - Three checkboxes, defaulting to unchecked.
   - A text input for resource content IDs, with helper text that blank means the whole project, showing the parse error from task 7 inline.
   - A warning shown when "force re-translation" is checked, stating that it re-translates from the original snapshot and can overwrite editor work in progress.
   - A two-step confirm: the submit button opens a confirmation naming the project; only the confirm actually posts.
   - `isSaving` state, success banner, and `isAuthorizationError` / `log.exception` error handling copied from the API-keys page.
-- [ ] **Step 3:** `yarn lint` (it runs prettier, eslint, the unused-translations check, and `svelte-check` in one pass). There is no `yarn check` script.
+- [x] **Step 3:** `yarn lint` (it runs prettier, eslint, the unused-translations check, and `svelte-check` in one pass). There is no `yarn check` script.
 
 ---
 
@@ -272,14 +273,14 @@ The orchestration methods are not directly unit-testable (durable-function conte
 
 **Files:** Modify `src/routes/projects/[projectId]/+page.svelte`
 
-- [ ] **Step 1:** Add a link to `/admin/projects/{$project.id}` wrapped in `{#if $userCan(Permission.RequeuePreTranslationProject)}`. The page already imports `Permission` and `userCan`. Place it near the existing start-project control, labelled so it is clearly an admin action (e.g. "Admin: re-run pre-translation"). Only show it when `$project.started` is set, since the endpoint rejects unstarted projects.
-- [ ] **Step 2:** `yarn lint`.
+- [x] **Step 1:** Add a link to `/admin/projects/{$project.id}` wrapped in `{#if $userCan(Permission.RequeuePreTranslationProject)}`. The page already imports `Permission` and `userCan`. Place it near the existing start-project control, labelled so it is clearly an admin action (e.g. "Admin: re-run pre-translation"). Only show it when `$project.started` is set, since the endpoint rejects unstarted projects.
+- [x] **Step 2:** `yarn lint`.
 
 ---
 
 ### Task 10: Verify end to end
 
-- [ ] **Step 1:** Full server build + all test projects green.
-- [ ] **Step 2:** `yarn lint:ci` and `yarn test` green.
-- [ ] **Step 3:** Confirm by reading the diff that `Projects/Start/Endpoint.cs` is unmodified and that its publish call still produces a message identical to today's.
+- [x] **Step 1:** Full server build + all test projects green.
+- [x] **Step 2:** `yarn lint:ci` and `yarn test` green.
+- [x] **Step 3:** Confirm by reading the diff that `Projects/Start/Endpoint.cs` is unmodified and that its publish call still produces a message identical to today's.
 - [ ] **Step 4:** Manual verification requires the Auth0 prerequisite. Once granted in dev: start a project, let it finish, then re-run it from `/admin/projects/{id}` with each option and confirm against logs and the DB. Until then, state plainly in the PR that manual verification is outstanding and blocked on Auth0.

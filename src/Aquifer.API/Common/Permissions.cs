@@ -34,6 +34,7 @@ public static class PermissionName
         ReadResourceLists = "read:resource-lists",
         ReadResources = "read:resources",
         ReadUsers = "read:users",
+        RequeuePreTranslationProject = "requeue-pre-translation:project",
         ReviewContent = "review:content",
         SendReviewContent = "send-review:content",
         SendReviewCommunityContent = "send-review:community-content",

@@ -25,7 +25,7 @@
 
 ## Prerequisite (manual, out-of-repo, blocking for release only)
 
-- [ ] **Auth0:** create the `admin:requeue-project-pre-translation` permission on the API and grant it to the Admin role, in **every** environment (dev, staging, prod). Until this is done the endpoint returns 403 for everyone, including admins. Implementation and all tests in this plan can proceed without it; only manual verification and release are blocked.
+- [ ] **Auth0:** create the `requeue-pre-translation:project` permission on the API and grant it to the Admin role, in **every** environment (dev, staging, prod). Until this is done the endpoint returns 403 for everyone, including admins. Implementation and all tests in this plan can proceed without it; only manual verification and release are blocked.
 
 ---
 
@@ -33,7 +33,7 @@
 
 | File | Responsibility |
 |---|---|
-| `src/Aquifer.API/Common/Permissions.cs` | Add `AdminRequeueProjectPreTranslation` constant. |
+| `src/Aquifer.API/Common/Permissions.cs` | Add `RequeuePreTranslationProject` constant. |
 | `src/Aquifer.API/Endpoints/Admin/Projects/PreTranslate/Request.cs` | Route param + four run options. |
 | `src/Aquifer.API/Endpoints/Admin/Projects/PreTranslate/Validator.cs` | Shape-level validation of the options. |
 | `src/Aquifer.API/Endpoints/Admin/Projects/PreTranslate/Endpoint.cs` | Guard, DB-level validation, publish, 202. |
@@ -44,7 +44,7 @@
 | `tests/Aquifer.API.IntegrationTests/Endpoints/Admin/Projects/PreTranslate/EndpointTests.cs` | Authorization + 404 negative cases. |
 | `docs/ai-translation-workflow.md` | Document the admin re-run path. |
 | **content-manager-web** | |
-| `src/lib/stores/auth.ts` | Add `Permission.AdminRequeueProjectPreTranslation`. |
+| `src/lib/stores/auth.ts` | Add `Permission.RequeuePreTranslationProject`. |
 | `src/lib/utils/projects.ts` | `requeueProjectPreTranslation(id, options)` + `parseResourceContentIds`. |
 | `src/lib/utils/projects.test.ts` | Tests for payload shaping and ID parsing. |
 | `src/routes/admin/projects/[projectId]/+page.ts` | Permission guard + project load. |
@@ -59,9 +59,9 @@
 
 - [ ] **Step 1:** Add to `PermissionName`, keeping the existing alphabetical-by-constant-name ordering:
   ```csharp
-  AdminRequeueProjectPreTranslation = "admin:requeue-project-pre-translation",
+  RequeuePreTranslationProject = "requeue-pre-translation:project",
   ```
-  It sorts first, before `AiTranslate`, so it takes the `public const string` prefix and `AiTranslate` becomes a plain continuation of the declaration list.
+  It sorts between `ReadUsers` and `ReviewContent` ("Req" > "Rea", "Req" < "Rev"), so it is a plain insertion into the middle of the existing single `public const string` declaration list — no change to the first or last entry.
 - [ ] **Step 2:** Build. No test — this is a constant with no behavior.
 
 ---
@@ -142,7 +142,7 @@ public sealed record TranslateProjectResourcesMessage(
 - [ ] **Step 4: `Endpoint.cs`.** Constructor injects `AquiferDbContext`, `IUserService`, `ITranslationMessagePublisher`, and `ILogger<Endpoint>`. Configure:
   ```csharp
   Post("/admin/projects/{Id}/pre-translate");
-  Permissions(PermissionName.AdminRequeueProjectPreTranslation);
+  Permissions(PermissionName.RequeuePreTranslationProject);
   ```
   Handler, in order:
   1. `var user = await userService.GetUserFromJwtAsync(ct);`
@@ -231,7 +231,7 @@ The orchestration methods are not directly unit-testable (durable-function conte
 - Modify: `src/lib/stores/auth.ts`, `src/lib/utils/projects.ts`
 - Test: `src/lib/utils/projects.test.ts`
 
-- [ ] **Step 1:** Add `AdminRequeueProjectPreTranslation = 'admin:requeue-project-pre-translation'` to the `Permission` enum. The enum is loosely grouped rather than strictly sorted — place it sensibly and match the surrounding style.
+- [ ] **Step 1:** Add `RequeuePreTranslationProject = 'requeue-pre-translation:project'` to the `Permission` enum. The enum is loosely grouped rather than strictly sorted — place it sensibly and match the surrounding style.
 - [ ] **Step 2: Write the failing tests** for a `parseResourceContentIds(input: string): { ids: number[]; invalid: string[] }` helper — comma and/or whitespace separated, trims, drops empties, dedupes, returns empty for blank input, and reports non-numeric entries in `invalid` rather than silently coercing (`NaN` reaching the API would be a confusing 400).
 
   **Do not reuse the existing `parseNumbersListFromString` in `src/lib/utils/number-list-parser.ts`**, despite the apparent overlap. It is built for bounded ranges (it requires `min`/`max`, expands `1-5` and `all`, and **silently discards** anything outside the bounds). Resource content IDs have no natural upper bound, and silently dropping an ID the admin typed is exactly the failure mode this helper exists to prevent — the admin would believe they queued five resources and get four. Leave that function alone; it has three existing callers. Add a comment on the new helper saying why it is separate, so the duplication reads as deliberate.
@@ -272,7 +272,7 @@ The orchestration methods are not directly unit-testable (durable-function conte
 
 **Files:** Modify `src/routes/projects/[projectId]/+page.svelte`
 
-- [ ] **Step 1:** Add a link to `/admin/projects/{$project.id}` wrapped in `{#if $userCan(Permission.AdminRequeueProjectPreTranslation)}`. The page already imports `Permission` and `userCan`. Place it near the existing start-project control, labelled so it is clearly an admin action (e.g. "Admin: re-run pre-translation"). Only show it when `$project.started` is set, since the endpoint rejects unstarted projects.
+- [ ] **Step 1:** Add a link to `/admin/projects/{$project.id}` wrapped in `{#if $userCan(Permission.RequeuePreTranslationProject)}`. The page already imports `Permission` and `userCan`. Place it near the existing start-project control, labelled so it is clearly an admin action (e.g. "Admin: re-run pre-translation"). Only show it when `$project.started` is set, since the endpoint rejects unstarted projects.
 - [ ] **Step 2:** `yarn lint`.
 
 ---

@@ -84,10 +84,10 @@ Two consequences worth stating plainly:
 
 ### Guard
 
-A new permission, `admin:requeue-project-pre-translation`, added as
-`PermissionName.AdminRequeueProjectPreTranslation` in
+A new permission, `requeue-pre-translation:project`, added as
+`PermissionName.RequeuePreTranslationProject` in
 `src/Aquifer.API/Common/Permissions.cs` and as
-`Permission.AdminRequeueProjectPreTranslation` in
+`Permission.RequeuePreTranslationProject` in
 `content-manager-web`'s `src/lib/stores/auth.ts`.
 
 Permissions in this codebase are only string constants; the actual grant lives
@@ -188,7 +188,7 @@ is otherwise untouched.
 `src/routes/admin/projects/[projectId]/+page.ts` and `+page.svelte` in
 content-manager-web, following `admin/api-keys/create/` exactly: `+page.ts`
 does `await parent()` then `redirect(302, '/')` unless
-`userCan(Permission.AdminRequeueProjectPreTranslation)`.
+`userCan(Permission.RequeuePreTranslationProject)`.
 
 The page loads the project, shows its name, ID, and started date, and offers
 the three checkboxes plus an optional comma-separated resource-content-ID

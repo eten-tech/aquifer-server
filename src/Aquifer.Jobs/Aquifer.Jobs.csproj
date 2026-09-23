@@ -5,6 +5,9 @@
         <OutputType>Exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
+        <InternalsVisibleTo Include="Aquifer.Jobs.UnitTests" />
+    </ItemGroup>
+    <ItemGroup>
         <PackageReference Include="Azure.Data.Tables" />
         <PackageReference Include="Azure.Monitor.Query" />
         <PackageReference Include="Azure.ResourceManager.ApiManagement" />

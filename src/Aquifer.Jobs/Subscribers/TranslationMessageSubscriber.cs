@@ -122,14 +122,12 @@ public sealed class TranslationMessageSubscriber(
         DurableTaskClient durableTaskClient,
         CancellationToken ct)
     {
-        const int aquiferProjectPlatformId = 1;
-
         var project = await _dbContext.Projects
                 .Where(p => p.Id == message.ProjectId)
                 .FirstOrDefaultAsync(ct) ??
             throw new InvalidOperationException($"Project with ID {message.ProjectId} does not exist.");
 
-        if (project.ProjectPlatformId != aquiferProjectPlatformId)
+        if (project.ProjectPlatformId != Constants.AquiferProjectPlatformId)
         {
             _logger.LogInformation(
                 "Gracefully skipping translations for Project ID {ProjectId} because the project platform is not Aquifer.",
@@ -148,6 +146,16 @@ public sealed class TranslationMessageSubscriber(
             throw new InvalidOperationException($"Project with ID {message.ProjectId} does not have any resource contents.");
         }
 
+        // An admin re-run may restrict the run to specific resource contents.
+        var resourceContentIdsToTranslate =
+            FilterRequestedResourceContentIds(projectResourceContentIds, message.ResourceContentIds);
+
+        if (resourceContentIdsToTranslate.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"None of the requested Resource Content IDs belong to Project ID {message.ProjectId}.");
+        }
+
         // Kick off the durable function orchestration.
         // If it fails it will put a message on the poison queue.
         var orchestrationInstanceId = await durableTaskClient.ScheduleNewOrchestrationInstanceAsync(
@@ -155,9 +163,12 @@ public sealed class TranslationMessageSubscriber(
             new OrchestrateProjectResourcesTranslationDto(
                 message.ProjectId,
                 message.StartedByUserId,
-                projectResourceContentIds,
+                resourceContentIdsToTranslate,
                 Queues.GetPoisonQueueName(Queues.TranslateProjectResources),
-                queueMessage.MessageText),
+                queueMessage.MessageText,
+                message.ShouldForceRetranslation,
+                message.ShouldSkipCompanyLeadAssignment,
+                message.ShouldSkipProjectStartedNotification),
             ct);
 
         _logger.LogInformation(
@@ -179,11 +190,17 @@ public sealed class TranslationMessageSubscriber(
     {
         try
         {
+            var translationOrigin = GetProjectTranslationOrigin(dto.ShouldForceRetranslation);
+
             var translateResourceTasks = dto.ProjectResourceContentIds
                 .Select(resourceContentId =>
                     context.CallActivityAsync<int>(
                         TranslateResourceActivityFunctionName,
-                        new TranslateResourceActivityDto(resourceContentId, dto.StartedByUserId, TranslationOrigin.Project),
+                        new TranslateResourceActivityDto(
+                            resourceContentId,
+                            dto.StartedByUserId,
+                            translationOrigin,
+                            dto.ShouldForceRetranslation),
                         s_durableFunctionTaskOptions))
                 .ToList();
 
@@ -193,7 +210,12 @@ public sealed class TranslationMessageSubscriber(
 
             await context.CallActivityAsync(
                 UpdateProjectPostTranslationActivityFunctionName,
-                new UpdateProjectPostTranslationActivityDto(dto.ProjectId, dto.StartedByUserId, translatedResourceContentIds),
+                new UpdateProjectPostTranslationActivityDto(
+                    dto.ProjectId,
+                    dto.StartedByUserId,
+                    translatedResourceContentIds,
+                    dto.ShouldSkipCompanyLeadAssignment,
+                    dto.ShouldSkipProjectStartedNotification),
                 s_durableFunctionTaskOptions);
         }
         catch (Exception orchestrationException)
@@ -237,7 +259,7 @@ public sealed class TranslationMessageSubscriber(
         await TranslateResourceCoreAsync(
             dto.ResourceContentId,
             dto.StartedByUserId,
-            false,
+            dto.ShouldForceRetranslation,
             dto.TranslationOrigin,
             activityContext.CancellationToken);
 
@@ -253,6 +275,37 @@ public sealed class TranslationMessageSubscriber(
 
         var project = await _dbContext.Projects.SingleAsync(p => p.Id == dto.ProjectId);
 
+        // An admin re-run may skip assignment, in which case a missing Company Lead is not an error because it's never read.
+        if (dto.ShouldSkipCompanyLeadAssignment)
+        {
+            _logger.LogInformation(
+                "Skipping Company Lead assignment for Project ID {ProjectId} because it was skipped for this run.",
+                dto.ProjectId);
+        }
+        else
+        {
+            await AssignTranslatedResourcesToCompanyLeadAsync(dto, project, activityContext.CancellationToken);
+        }
+
+        if (dto.ShouldSkipProjectStartedNotification)
+        {
+            _logger.LogInformation(
+                "Skipping the project started notification for Project ID {ProjectId} because it was skipped for this run.",
+                dto.ProjectId);
+
+            return;
+        }
+
+        await _notificationMessagePublisher.PublishSendProjectStartedNotificationMessageAsync(
+            new SendProjectStartedNotificationMessage(dto.ProjectId),
+            activityContext.CancellationToken);
+    }
+
+    private async Task AssignTranslatedResourcesToCompanyLeadAsync(
+        UpdateProjectPostTranslationActivityDto dto,
+        ProjectEntity project,
+        CancellationToken ct)
+    {
         var companyLeadUserId = project.CompanyLeadUserId ??
             throw new InvalidOperationException($"Company Lead User ID is null for Project ID {project.Id}. This should never happen.");
 
@@ -273,7 +326,7 @@ public sealed class TranslationMessageSubscriber(
                     rcv.ResourceContent.Status == ResourceContentStatus.AquiferizeAiDraftComplete ||
                     rcv.ResourceContent.Status == ResourceContentStatus.New) &&
                 rcv.AssignedUserId == null)
-            .ToListAsync(activityContext.CancellationToken);
+            .ToListAsync(ct);
 
         // Edge case handling: Only update resource content versions that were queued for translation (even if gracefully skipped)
         // by this fan out -> fan in orchestration process.
@@ -288,17 +341,13 @@ public sealed class TranslationMessageSubscriber(
                 resourceContentVersionToAssign,
                 resourceContentVersionToAssign.AssignedUserId,
                 dto.StartedByUserId,
-                activityContext.CancellationToken);
+                ct);
         }
 
         if (resourceContentVersionsToAssign.Count > 0)
         {
-            await _dbContext.SaveChangesAsync(activityContext.CancellationToken);
+            await _dbContext.SaveChangesAsync(ct);
         }
-
-        await _notificationMessagePublisher.PublishSendProjectStartedNotificationMessageAsync(
-            new SendProjectStartedNotificationMessage(dto.ProjectId),
-            activityContext.CancellationToken);
     }
 
     /// <summary>
@@ -955,6 +1004,32 @@ public sealed class TranslationMessageSubscriber(
             resourceContentLanguage.ISO6393Code);
     }
 
+    /// <summary>
+    /// Selects the <see cref="TranslationOrigin" /> used by the project pre-translation fan out.
+    /// Forced retranslation must use <see cref="TranslationOrigin.BasicTranslationOnly" />; see the guard in
+    /// <see cref="TranslateResourceCoreAsync" />.
+    /// </summary>
+    internal static TranslationOrigin GetProjectTranslationOrigin(bool shouldForceRetranslation)
+    {
+        return shouldForceRetranslation ? TranslationOrigin.BasicTranslationOnly : TranslationOrigin.Project;
+    }
+
+    /// <summary>
+    /// Restricts a project's Resource Content IDs to those requested by an admin re-run, ignoring any requested IDs that don't belong to
+    /// the project. A null or empty request means the whole project.
+    /// </summary>
+    internal static IReadOnlyList<int> FilterRequestedResourceContentIds(
+        IReadOnlyList<int> projectResourceContentIds,
+        IReadOnlyList<int>? requestedResourceContentIds)
+    {
+        if (requestedResourceContentIds is not { Count: > 0 })
+        {
+            return projectResourceContentIds;
+        }
+
+        return projectResourceContentIds.Intersect(requestedResourceContentIds).ToList();
+    }
+
     private static string SanitizeTiptapContent(string content)
     {
         // Remove inline comments or anything else that needs to be sanitized.
@@ -967,17 +1042,23 @@ public sealed class TranslationMessageSubscriber(
         int StartedByUserId,
         IReadOnlyList<int> ProjectResourceContentIds,
         string PoisonQueueName,
-        string OriginalQueueMessageText);
+        string OriginalQueueMessageText,
+        bool ShouldForceRetranslation = false,
+        bool ShouldSkipCompanyLeadAssignment = false,
+        bool ShouldSkipProjectStartedNotification = false);
 
     public sealed record TranslateResourceActivityDto(
         int ResourceContentId,
         int StartedByUserId,
-        TranslationOrigin TranslationOrigin);
+        TranslationOrigin TranslationOrigin,
+        bool ShouldForceRetranslation = false);
 
     public sealed record UpdateProjectPostTranslationActivityDto(
         int ProjectId,
         int StartedByUserId,
-        IReadOnlyList<int> TranslatedProjectResourceContentIds);
+        IReadOnlyList<int> TranslatedProjectResourceContentIds,
+        bool ShouldSkipCompanyLeadAssignment = false,
+        bool ShouldSkipProjectStartedNotification = false);
 
     public sealed record OrchestrateLanguageResourcesTranslationDto(
         int SourceLanguageId,

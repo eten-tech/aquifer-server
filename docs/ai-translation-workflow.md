@@ -14,6 +14,7 @@ message via `ITranslationMessagePublisher` (`Aquifer.Common`):
 | `Resources/Content/CreateTranslation` | `TranslateResourceMessage` | Single resource content item |
 | `Resources/Content/Aquiferize` | `TranslateResourceMessage` (Aquiferization origin) | Single resource content item, text-improvement only |
 | `Projects/Start` | `TranslateProjectResourcesMessage` | All resource contents in a project (fan-out/fan-in) |
+| `Admin/Projects/PreTranslate` | `TranslateProjectResourcesMessage` (with run options) | Admin re-run of a started project; see [Admin re-run of project pre-translation](#admin-re-run-of-project-pre-translation) |
 | (parent-resource language rollout) | `TranslateLanguageResourcesMessage` | All resources under a parent resource, into a new target language |
 
 ## Queue consumption and orchestration (Aquifer.Jobs)
@@ -38,7 +39,49 @@ these messages:
 
 Failures in either orchestration are swallowed after the durable retry policy
 (5 retries, 1s backoff) is exhausted, and the original queue message is
-republished to a poison queue for manual replay.
+republished to a poison queue. For project translation this no longer requires
+a developer to hand-replay that message — see
+[Admin re-run of project pre-translation](#admin-re-run-of-project-pre-translation).
+
+### Admin re-run of project pre-translation
+
+`POST /admin/projects/{id}/pre-translate` re-queues a **started** project's
+pre-translation. It is guarded by the `requeue-pre-translation:project`
+permission, which is granted in Auth0 rather than defined here.
+
+The endpoint only validates and publishes. Unlike `Projects/Start` it does not
+create snapshots (a forced retranslation reads from the *original* snapshot, so
+adding more would corrupt it) and does not modify the project's `Started` date.
+It rejects projects that were never started and projects that aren't on the
+Aquifer platform, the latter because the subscriber silently skips them.
+
+Four run options ride along on `TranslateProjectResourcesMessage`. All default
+to the behavior of the normal start-project flow, so messages published before
+these options existed — including any sitting on the poison queue — behave
+exactly as they always have.
+
+| Option | Effect |
+|---|---|
+| `ShouldForceRetranslation` | Runs the fan-out with `TranslationOrigin.BasicTranslationOnly` instead of `TranslationOrigin.Project` |
+| `ShouldSkipCompanyLeadAssignment` | Skips assigning translated resources to the project's company lead |
+| `ShouldSkipProjectStartedNotification` | Suppresses the "project started" notification |
+| `ResourceContentIds` | Restricts the run to specific resource contents; null or empty means the whole project |
+
+`ShouldForceRetranslation` selects the origin rather than being an independent
+flag because `TranslateResourceCoreAsync` throws unless forced retranslation is
+paired with `BasicTranslationOnly`. The practical consequences:
+
+- **Off** (default): only content in `TranslationAwaitingAiDraft` /
+  `AquiferizeAwaitingAiDraft` is translated, anything already carrying updated
+  content is gracefully skipped, a new snapshot is added, and status advances
+  to `*AiDraftComplete`.
+- **On**: content is re-translated from its first snapshot, the existing
+  `*AwaitingAiDraft` snapshot is overwritten rather than a new one added, and
+  status is left alone unless the content is still in the awaiting status.
+  Because this path does *not* bail out on content that already has updates,
+  **a forced re-run can overwrite in-progress editor work**. That is the point
+  of the escape hatch, and the reason the endpoint is permission-guarded and
+  the UI confirms before firing.
 
 All paths converge on **`TranslateResourceCoreAsync`**
 (`TranslationMessageSubscriber.cs`), which:

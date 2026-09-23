@@ -7,6 +7,11 @@ public static class Constants
 {
     public const int EnglishLanguageId = 1;
 
+    /// <summary>
+    /// Only Projects on the Aquifer platform are eligible for AI pre-translation.
+    /// </summary>
+    public const int AquiferProjectPlatformId = 1;
+
     public const string HttpContextItemCachedApiKey = "ApiKey";
 
     public const string TelemetryBnApiPropertyName = "bnApi";

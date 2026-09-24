@@ -38,6 +38,7 @@
         <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.1" />
         <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
         <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.2" />
+        <PackageVersion Include="Microsoft.Azure.NotificationHubs" Version="4.2.0" />
         <PackageVersion Include="Microsoft.ClearScript.Complete" Version="7.5.0" />
         <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.0.1" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.4">

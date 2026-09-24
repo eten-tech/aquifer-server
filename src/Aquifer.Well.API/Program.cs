@@ -9,6 +9,8 @@ using Aquifer.Data;
 using Aquifer.Data.Entities;
 using Aquifer.Well.API.Configuration;
 using Aquifer.Well.API.OpenApi;
+using Aquifer.Well.API.Endpoints.PushNotifications.Models;
+using Aquifer.Well.API.Services;
 using Aquifer.Well.API.Telemetry;
 using FastEndpoints;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -49,6 +51,11 @@ builder.Services
 
 builder.Services.AddOptions<ConfigurationOptions>().Bind(builder.Configuration);
 builder.Services.Configure<ApiKeyAuthorizationMiddlewareOptions>(o => o.Scope = ApiKeyScope.WellApi);
+
+builder.Services.AddSingleton<INotificationService, NotificationHubService>();
+builder.Services.AddOptions<NotificationHubOptions>()
+    .Configure(builder.Configuration.GetSection("NotificationHub").Bind)
+    .ValidateDataAnnotations();
 
 var app = builder.Build();
 

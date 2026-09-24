@@ -76,7 +76,9 @@ paired with `BasicTranslationOnly`. The practical consequences:
   content is gracefully skipped, a new snapshot is added, and status advances
   to `*AiDraftComplete`.
 - **On**: content is re-translated from its first snapshot, the existing
-  `*AwaitingAiDraft` snapshot is overwritten rather than a new one added, and
+  `*AwaitingAiDraft` snapshot is overwritten rather than a new one added (or,
+  if the resource has no such snapshot because its original translation never
+  completed, one is created just as a first translation would), and
   status is left alone unless the content is still in the awaiting status.
   Because this path does *not* bail out on content that already has updates,
   **a forced re-run can overwrite in-progress editor work**. That is the point

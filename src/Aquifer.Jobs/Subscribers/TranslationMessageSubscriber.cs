@@ -923,17 +923,19 @@ public sealed class TranslationMessageSubscriber(
 
         // If not a retranslation then save a new snapshot of the translation.
         // Always save it as TranslationAwaitingAiDraft/AquiferizeAwaitingAiDraft in order to prevent a user's name from appearing with the snapshot.
-        if (!shouldForceRetranslation)
+        // If a retranslation then update the existing snapshot to not create too many snapshots.
+        // A retranslation of a resource whose original translation never completed has no AI draft snapshot to update, in which case
+        // fall through and create one exactly as a first translation would.
+        var existingAiTranslationSnapshot = shouldForceRetranslation
+            ? TryGetAiDraftSnapshotToOverwrite(resourceContentVersion.ResourceContentVersionSnapshots, awaitingStatus)
+            : null;
+
+        if (existingAiTranslationSnapshot is null)
         {
             await _resourceHistoryService.AddSnapshotHistoryAsync(resourceContentVersion, startedByUserId, awaitingStatus, ct);
         }
-        // If a retranslation then update the existing snapshot to not create too many snapshots.
         else
         {
-            var existingAiTranslationSnapshot = resourceContentVersion.ResourceContentVersionSnapshots
-                .OrderBy(rcvs => rcvs.Created)
-                .Last(rcvs => rcvs.Status == awaitingStatus);
-
             existingAiTranslationSnapshot.Content = resourceContentVersion.Content;
             existingAiTranslationSnapshot.DisplayName = resourceContentVersion.DisplayName;
             existingAiTranslationSnapshot.WordCount = resourceContentVersion.WordCount;
@@ -1002,6 +1004,21 @@ public sealed class TranslationMessageSubscriber(
             resourceContentId,
             resourceContentVersion.Id,
             resourceContentLanguage.ISO6393Code);
+    }
+
+    /// <summary>
+    /// Returns the most recent AI draft snapshot that a forced retranslation should overwrite, or null if there isn't one.
+    /// A resource only has an AI draft snapshot if a previous translation succeeded, so this is null for resources whose original
+    /// pre-translation never completed — which are exactly the ones an admin is most likely to force a re-run for.
+    /// </summary>
+    internal static ResourceContentVersionSnapshotEntity? TryGetAiDraftSnapshotToOverwrite(
+        IEnumerable<ResourceContentVersionSnapshotEntity> snapshots,
+        ResourceContentStatus awaitingStatus)
+    {
+        return snapshots
+            .Where(rcvs => rcvs.Status == awaitingStatus)
+            .OrderBy(rcvs => rcvs.Created)
+            .LastOrDefault();
     }
 
     /// <summary>

@@ -1,3 +1,5 @@
+using Aquifer.Data.Schemas;
+
 namespace Aquifer.API.Endpoints.Bibles.Language.List;
 
 public record Response
@@ -7,7 +9,7 @@ public record Response
     public required string Abbreviation { get; set; }
     public required int LanguageId { get; set; }
     public required bool RestrictedLicense { get; set; }
-    public required BibleLicenseInfo LicenseInfo { get; init; }
+    public required BibleLicenseInfoSchema LicenseInfo { get; init; }
     public required IEnumerable<BibleBookMetadataResponse> Books { get; set; }
 }
 

@@ -1,4 +1,6 @@
-﻿namespace Aquifer.Public.API.Endpoints.Resources.Types.List;
+﻿using Aquifer.Data.Schemas;
+
+namespace Aquifer.Public.API.Endpoints.Resources.Types.List;
 
 public class Response
 {
@@ -10,5 +12,5 @@ public class AvailableResourceCollection
 {
     public required string Code { get; set; }
     public required string Title { get; set; }
-    public required ResourceLicenseInfo LicenseInformation { get; init; }
+    public required ParentResourceLicenseInfoSchema LicenseInformation { get; init; }
 }

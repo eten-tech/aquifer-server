@@ -1,6 +1,7 @@
 using Aquifer.API.Helpers;
 using Aquifer.Common.Utilities;
 using Aquifer.Data;
+using Aquifer.Data.Schemas;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,7 +26,7 @@ public class Endpoint(AquiferDbContext dbContext) : Endpoint<Request, List<Respo
                 Name = bible.Name,
                 Abbreviation = bible.Abbreviation,
                 Id = bible.Id,
-                LicenseInfo = JsonUtilities.DefaultDeserialize<BibleLicenseInfo>(bible.LicenseInfo),
+                LicenseInfo = JsonUtilities.DefaultDeserialize<BibleLicenseInfoSchema>(bible.LicenseInfo),
                 LanguageId = bible.LanguageId,
                 IsLanguageDefault = bible.LanguageDefault,
                 RestrictedLicense = bible.RestrictedLicense,

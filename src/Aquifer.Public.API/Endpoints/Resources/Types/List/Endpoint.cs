@@ -2,6 +2,7 @@ using Aquifer.Common.Extensions;
 using Aquifer.Common.Utilities;
 using Aquifer.Data;
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 using Aquifer.Public.API.Helpers;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +44,7 @@ public class Endpoint(AquiferDbReadOnlyContext dbContext) : EndpointWithoutReque
                         {
                             Code = x.Code,
                             Title = x.DisplayName,
-                            LicenseInformation = JsonUtilities.DefaultDeserialize<ResourceLicenseInfo>(x.LicenseInfo),
+                            LicenseInformation = JsonUtilities.DefaultDeserialize<ParentResourceLicenseInfoSchema>(x.LicenseInfo),
                         })
                         .ToList(),
                 });

@@ -3,6 +3,7 @@ using Aquifer.Common.Services.Caching;
 using Aquifer.Common.Utilities;
 using Aquifer.Data;
 using Aquifer.Data.Entities;
+using Aquifer.Data.Schemas;
 using Aquifer.Public.API.Helpers;
 using Dapper;
 using FastEndpoints;
@@ -17,10 +18,7 @@ public sealed class Endpoint(AquiferDbReadOnlyContext _dbContext, ICachingLangua
     {
         Get("/resources/collections/{code}");
         Options(EndpointHelpers.UnauthenticatedServerCacheInSeconds(EndpointHelpers.OneHourInSeconds));
-        Description(d => d
-            .WithTags("Resources/Collections")
-            .ProducesProblemFE()
-            .ProducesProblemFE(404));
+        Description(d => d.WithTags("Resources/Collections").ProducesProblemFE().ProducesProblemFE(404));
         Summary(s =>
         {
             s.Summary = "Get a resource collection with language localization data for the given collection code.";
@@ -72,9 +70,8 @@ public sealed class Endpoint(AquiferDbReadOnlyContext _dbContext, ICachingLangua
             ResourceType = parentResource.ResourceType,
             SliCategory = parentResource.SliCategory,
             SliLevel = parentResource.SliLevel,
-            LicenseInfo = JsonUtilities.DefaultDeserialize<ResourceLicenseInfo>(parentResource.LicenseInfo),
-            AvailableLanguages = localizations
-                .Select(l => new AvailableLanguageResponse
+            LicenseInfo = JsonUtilities.DefaultDeserialize<ParentResourceLicenseInfoSchema>(parentResource.LicenseInfo),
+            AvailableLanguages = localizations.Select(l => new AvailableLanguageResponse
                 {
                     LanguageId = l.LanguageId,
                     LanguageCode = languageCodeByIdMap[l.LanguageId],
@@ -180,10 +177,7 @@ public sealed class Endpoint(AquiferDbReadOnlyContext _dbContext, ICachingLangua
             """;
 
         // querying separately and joining in memory saves significant time over trying to join in the DB
-        await using var reader = await dbConnection.QueryMultipleWithRetriesAsync(
-            query,
-            parameters,
-            cancellationToken: ct);
+        await using var reader = await dbConnection.QueryMultipleWithRetriesAsync(query, parameters, cancellationToken: ct);
 
 #pragma warning disable VSTHRD103 // using the non-async Read() method is correct because I/O was already awaited above in QueryMultipleAsync()
         var parentResourceLocalizations = reader.Read<ParentResourceLocalization>().ToList();
@@ -193,8 +187,7 @@ public sealed class Endpoint(AquiferDbReadOnlyContext _dbContext, ICachingLangua
         // Note that there may be more ParentResourceLocalization entries than counts because we translate the parent resource names
         // before resource contents begin translation.  If this happens, then due to the Join() call here all
         // ParentResourceLocalizations without any translated resource contents for a given language will be omitted.
-        return parentResourceLocalizations
-            .Join(
+        return parentResourceLocalizations.Join(
                 resourceContentCounts,
                 prl => prl.LanguageId,
                 rcc => rcc.LanguageId,
@@ -212,16 +205,9 @@ public sealed class Endpoint(AquiferDbReadOnlyContext _dbContext, ICachingLangua
         string? SliCategory,
         int? SliLevel);
 
-    private sealed record ParentResourceLocalization(
-        int LanguageId,
-        string DisplayName);
+    private sealed record ParentResourceLocalization(int LanguageId, string DisplayName);
 
-    private sealed record ResourceContentCount(
-        int LanguageId,
-        int ResourceCount);
+    private sealed record ResourceContentCount(int LanguageId, int ResourceCount);
 
-    private sealed record ParentResourceLocalizationWithResourceContentCount(
-        int LanguageId,
-        string DisplayName,
-        int ResourceCount);
+    private sealed record ParentResourceLocalizationWithResourceContentCount(int LanguageId, string DisplayName, int ResourceCount);
 }

@@ -63,7 +63,7 @@ So "force re-translation" cannot be a flag bolted onto
 | Run option | Origin used per resource | Behavior |
 |---|---|---|
 | force off (default) | `TranslationOrigin.Project` | Today's behavior. Only content in `TranslationAwaitingAiDraft`/`AquiferizeAwaitingAiDraft` translates; anything else is gracefully skipped, as is any non-aquiferization content that already has `ContentUpdated` set. A new snapshot is added; status moves to `*AiDraftComplete`. |
-| force on | `TranslationOrigin.BasicTranslationOnly` | Re-translates from the *first* snapshot rather than current content, overwrites the most recent `*AwaitingAiDraft` snapshot instead of adding one, and leaves status alone unless the content is still in the awaiting status. |
+| force on | `TranslationOrigin.BasicTranslationOnly` | Re-translates from the *first* snapshot rather than current content, overwrites the most recent `*AwaitingAiDraft` snapshot instead of adding one — or creates one if the resource has none, which is the case when its original translation never completed — and leaves status alone unless the content is still in the awaiting status. |
 
 This is not a workaround — `BasicTranslationOnly`'s own doc comment already
 describes it as "Not triggered by a user flow; manually dev triggered only",
